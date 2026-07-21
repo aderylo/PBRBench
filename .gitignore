@@ -1,0 +1,30 @@
+# Environments & Cache
+.venv/
+.uv-cache/
+.ruff_cache/
+.pytest_cache/
+.mypy_cache/
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Output / Logs / Experiments
+outputs/
+*.log
+
+# Raw assets and generated benchmark data
+data/*
+!data/.gitkeep
+
+# IDE & Editor Settings
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# OS / Temporary Files
+*.tmp
+tmp/

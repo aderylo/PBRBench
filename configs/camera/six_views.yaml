@@ -1,0 +1,6 @@
+name: six_views
+elevation_deg: 20.0
+yaw_degrees: [0.0, 60.0, 120.0, 180.0, 240.0, 300.0]
+distance: 2.0
+focal_length_mm: 50.0
+sensor_width_mm: 36.0

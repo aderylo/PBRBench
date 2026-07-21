@@ -1,0 +1,12 @@
+defaults:
+  - data: texverse_sv
+  - lights: polyhaven_sv_v0
+  - camera: six_views
+  - renderer: blender_cycles
+  - _self_
+
+split: val
+object_ids: null
+max_objects: null
+overwrite: false
+dry_run: false

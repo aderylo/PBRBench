@@ -1,0 +1,5 @@
+name: texverse
+root: data/texverse_1k
+split_file: configs/data/splits/texverse_pbr_100.yaml
+path_template: glbs/glbs_1k/000-000/{id}_1024.glb
+output_root: data/texverse_eval

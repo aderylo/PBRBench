@@ -1,0 +1,11 @@
+name: polyhaven_sv_v0
+root: data/envmaps
+resolution: 1k
+format: exr
+rotation_deg: 0.0
+strength: 1.0
+envmaps:
+  - ferndale_studio_11
+  - newman_cafeteria
+  - suburban_garden
+  - cobblestone_parish_road

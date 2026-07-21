@@ -1,0 +1,9 @@
+[submodule "third_party/Neural-LightRig"]
+	path = third_party/Neural-LightRig
+	url = https://github.com/ZexinHe/Neural-LightRig.git
+[submodule "third_party/SuperMat"]
+	path = third_party/SuperMat
+	url = https://github.com/hyj542682306/SuperMat.git
+[submodule "third_party/MaterialAnything"]
+	path = third_party/MaterialAnything
+	url = https://github.com/3DTopia/MaterialAnything.git

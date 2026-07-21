@@ -1,0 +1,85 @@
+dataset: objaverse
+root: data/objaverse
+repo_id: allenai/objaverse
+path_template: glbs/000-001/{id}.glb
+
+# Deterministic sample from the 347 matching assets in the neighboring
+# PBRAgents Objaverse cache. Regenerate with scan_pbr.py --seed 0 --count 64.
+selection:
+  seed: 0
+  candidate_count: 347
+  criteria:
+    - one glTF material
+    - TEXCOORD_0 on every mesh primitive
+    - baseColorTexture
+    - metallicRoughnessTexture
+
+train:
+  - id: 92d1cbc20e8c440aad9be60586d5efa6
+  - id: 9f9dae0f8643433ababb03668088b268
+  - id: 1217b74ad5fb417b999fcd116bb22089
+  - id: 6627d1541aa647b09d0cbdda4dd1f586
+  - id: c1987ac31310458794ffabcbd8bc7a49
+  - id: b9470c4a38384ce49d915a6eb7cda156
+  - id: 9b972282f52049218350f79e12171d95
+  - id: 729bd5e2368b4ffa871d40c728c8c0a5
+  - id: b3854b436f3c4c3f90296d97d4f276b8
+  - id: 86f044c4f1404d02bc4ecdf56abaa48a
+  - id: dc0bb314a28d40bda1af9de1b012db8f
+  - id: 553f342ce4334f8d8cdc934382587235
+  - id: c091d4f516034936ab3303e8958a5cb2
+  - id: 3a9845ac805745dcb7358b4cdbeea520
+  - id: 6cdfadc8f2af464282bea31976ea4870
+  - id: 271ff795502f40b6acc302d3edff86ad
+  - id: e7a4a2bf00fc47979d9ba9e23d09a321
+  - id: 61d5a28260744d8e8c4ba24d5d33db77
+  - id: c9a4322a3eb24081b040c960f047c3a8
+  - id: e392dabaa1ca4bb89efe9a7cf8b97cce
+  - id: 3c1bae0687144f51861a8a52be036c2b
+  - id: 75f3c537d0df4766b4f7758e5c783683
+  - id: 279435f543a84601986b21b6a2bb93b1
+  - id: 20c740ac137c4e22ba31ea6b5cf9e549
+  - id: 7dc5474a8cfa4cd891cbc9c3cad3e492
+  - id: b19f072a65c847038a9b0bfdf5945452
+  - id: d23ae3a418f84184ae5fd4b69ca2858c
+  - id: 2837acd37a2e46bfa34f45fd5f00a42e
+  - id: 85d180d7fb04481687126740604ba5f2
+  - id: a2df2dc40f7045a0825fd820284406f3
+  - id: 76c03123386b43d28893ac6a787ca06a
+  - id: e619e1b84af14194ac739712de4330b2
+  - id: efbe1577816044f297837ad1d218e7ab
+  - id: 4ec412fc7e0648e0a7a4554143185c33
+  - id: cecc9eedb5cc47c088f34fd5db85fc30
+  - id: a65aa0f95de340b29fdadd2c8420ad68
+  - id: c6f2569460b745f790a0e9abc263a28d
+  - id: 66c925685f0b4089bf931c40b75556ee
+  - id: 1d38f581286c4e0a8e143f9b43b60b8b
+  - id: cd0a18e6ce8e4b49b0e20e1a7c0e07f4
+  - id: 070cac6e82a94b07857a28d9bf0c65de
+  - id: 26c2708a6cfd4ef48cd8225251583796
+  - id: 9972fdea40bf48438ac2606b359ddd01
+  - id: fc883275cc8149f5954ed52efa6739c9
+  - id: eac6a1b0752e4e67b9baacecf32f589f
+  - id: 01ab7567885e429db6839155618a4b0c
+  - id: e6ae83e1d03f45df88ed7af6e6a68914
+  - id: bbccb58ed815443697cf744951a5e842
+
+val:
+  - id: 7fe8ef9f5e724b37a4e03ec9c08eb0c2
+  - id: 5bada036ebfe451ab7b01ae723506e15
+  - id: 78f5cdf452f54ec08866e0d87e584de6
+  - id: 1ebe77bc899e45ffab5a1705f2d9c156
+  - id: 4737581b6cc5483fb6a07ac95001feb8
+  - id: d5dd2f43432445048ec953c841c1159d
+  - id: 57cf03a8d2ce428081914966d45bd004
+  - id: 5b5a102914d940099b89dd787f2a6ef8
+
+test:
+  - id: 3abee9e4162b433c941698240cd2559d
+  - id: cc03666eb6b4406b8865385dc9c3046a
+  - id: a7b4b0ddfad84606b00e05cd8855d435
+  - id: 260ed137c0964b4988245535bff63036
+  - id: 24521cd09bf54aafbd1dce8d8c731293
+  - id: 7795c6a5fa144bfcb1c33041c71eab00
+  - id: c0a9b4a721f842fd8e78beb903bd017c
+  - id: bb2ca947d2d648f385079f4f93c177a8

@@ -1,0 +1,9 @@
+name: blender_cycles
+executable: blender
+resolution: 512
+texture_resolution: 512
+bake_margin: 16
+samples_per_pixel: 32
+denoise: true
+device: cuda
+transparent_background: true
