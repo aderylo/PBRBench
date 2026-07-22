@@ -1,0 +1,8 @@
+name: supermat
+_target_: src.methods_2d.supermat.SuperMat2D
+repo_root: third_party/SuperMat
+checkpoint: third_party/SuperMat/checkpoints/supermat.pth
+base_model: sd2-community/stable-diffusion-2-1
+device: cuda:0
+image_size: 512
+seed: 0

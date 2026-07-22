@@ -1,0 +1,8 @@
+name: neural_lightrig
+_target_: src.methods_2d.neural_lightrig.NeuralLightRig2D
+repo_root: third_party/Neural-LightRig
+input_resolution: 512
+guidance_scale: 2.0
+guidance_rescale: 0.7
+inference_steps: 75
+seed: 511

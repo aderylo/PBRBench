@@ -22,7 +22,9 @@ def load_objects(split_path: Path, partition: str = "all") -> list[dict[str, str
     if "objects" in split:
         objects = split["objects"]
     elif partition == "all":
-        objects = [item for name in ("train", "val", "test") for item in split.get(name, [])]
+        objects = [
+            item for name in ("train", "val", "test") for item in split.get(name, [])
+        ]
     else:
         objects = split.get(partition, [])
     if not objects:
@@ -45,7 +47,9 @@ def load_objects(split_path: Path, partition: str = "all") -> list[dict[str, str
     return parsed
 
 
-def download(split_path: Path, output_dir: Path, repo_id: str, partition: str = "all") -> None:
+def download(
+    split_path: Path, output_dir: Path, repo_id: str, partition: str = "all"
+) -> None:
     objects = load_objects(split_path, partition)
     pending = [item for item in objects if not (output_dir / item["path"]).is_file()]
     if not pending:
@@ -66,10 +70,18 @@ def download(split_path: Path, output_dir: Path, repo_id: str, partition: str = 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--split", required=True, type=Path, help="TexVerse object split YAML")
-    parser.add_argument("--output-dir", required=True, type=Path, help="Local TexVerse root")
-    parser.add_argument("--repo-id", default=DEFAULT_REPO_ID, help="Hugging Face dataset repository")
-    parser.add_argument("--partition", choices=("all", "train", "val", "test"), default="all")
+    parser.add_argument(
+        "--split", required=True, type=Path, help="TexVerse object split YAML"
+    )
+    parser.add_argument(
+        "--output-dir", required=True, type=Path, help="Local TexVerse root"
+    )
+    parser.add_argument(
+        "--repo-id", default=DEFAULT_REPO_ID, help="Hugging Face dataset repository"
+    )
+    parser.add_argument(
+        "--partition", choices=("all", "train", "val", "test"), default="all"
+    )
     return parser.parse_args()
 
 

@@ -1,0 +1,19 @@
+defaults:
+  - data: pbr_estimation_2d_texverse
+  - method_2d: supermat
+  - _self_
+
+output_dir: outputs/pbr_2d/${method_2d.name}
+
+runtime:
+  # One rendered object is 6 views × 4 source lights in the default dataset.
+  batch_size: 24
+  overwrite: false
+  keep_native: true
+
+hydra:
+  run:
+    dir: .
+  output_subdir: null
+  job:
+    chdir: false

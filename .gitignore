@@ -1,5 +1,6 @@
 # Environments & Cache
 .venv/
+.venvs/
 .uv-cache/
 .ruff_cache/
 .pytest_cache/

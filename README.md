@@ -72,7 +72,7 @@ Object-centric methods such as MaterialAnything, MaterialFusion/StableMaterial, 
 
 General image-space inverse-rendering methods such as RGB↔X, Intrinsic Image Diffusion, IntrinsicAnything, and image-mode DiffusionRenderer are secondary single-view baselines. They help measure how well general 2D priors transfer to object material recovery, but do not define the main task.
 
-Third-party implementations are included as Git submodules under `third_party/`; this repository does not vendor or modify their source. Each method keeps its own environment and installation procedure. Small adapters under `src/methods/` translate between the benchmark sample format and the method's native interface.
+Third-party implementations are included as Git submodules under `third_party/`; this repository does not vendor or modify their source. Each method keeps its own environment and installation procedure. Small adapters under `src/methods_2d/` and `src/methods_3d/` translate between the benchmark sample format and the method's native interface.
 
 ```bash
 git clone --recurse-submodules <repository-url>
@@ -83,7 +83,9 @@ The original license and usage terms of every third-party project still apply. S
 
 ## Usage
 
-Everything is configured through Hydra. The benchmark itself uses `uv`; third-party methods may use their own `uv`, Conda, Docker, or system environment as required.
+Everything is configured through Hydra. The benchmark and method-specific
+environments use `uv`; each method environment launches the common inference
+entrypoint directly.
 
 ```bash
 # Download the selected source lights
@@ -100,14 +102,24 @@ uv run python src/data/preprocessing/objaverse/scan_pbr.py
 uv run python src/data/preprocessing/render_views_2d.py
 uv run python src/data/preprocessing/render_views_3d.py
 
-# Single-view inference and evaluation
-uv run python src/infer_sv.py method=supermat data=synthetic_sv task=direct
+# Create a cached, uv-managed environment for the selected method (once)
+uv run python scripts/deps/neural_lightrig.py
+uv run python scripts/deps/supermat.py
 
-# Multi-view inference and evaluation
-uv run python src/infer_mv.py method=material_anything data=synthetic_mv task=relighting
+# Screen-space PBR inference runs in the selected method's uv environment
+third_party/.venvs/supermat/bin/python src/infer_pbr_2d.py method_2d=supermat
+third_party/.venvs/neural_lightrig/bin/python src/infer_pbr_2d.py \
+  method_2d=neural_lightrig
+
+# Restrict a development run without changing the prepared manifest
+third_party/.venvs/supermat/bin/python src/infer_pbr_2d.py \
+  method_2d=supermat data.max_samples=2
 ```
 
-Each run stores the resolved configuration, predictions, logs, runtime information, provenance, and metrics in a self-contained output directory. Inference can be resumed without recomputing completed samples, and saved predictions can be re-evaluated independently.
+Each inference run stores canonical predictions and its resolved configuration in
+a self-contained output directory. Inference can be resumed without recomputing
+completed samples. Direct and relighting evaluation will be separate entry
+points so saved predictions can be evaluated in the benchmark's root environment.
 
 ## Repository layout
 
@@ -116,19 +128,24 @@ configs/                 Hydra configuration groups
 docs/
   methods/               per-method setup and reproduction notes
 src/
-  infer_sv.py            single-view inference entry point
-  infer_mv.py            multi-view inference entry point
-  evaluate.py            standalone evaluation of saved predictions
+  infer_pbr_2d.py        screen-space PBR inference entry point
+  infer_pbr_3d.py        UV-space PBR inference entry point (planned)
+  eval_pbr_2d_direct.py  direct map evaluation (planned)
+  eval_pbr_2d_indirect.py
+                          relighting evaluation (planned)
   data/
+    pbr_estimation_dataset_2d.py
+                          manifest-backed screen-space dataset
     preprocessing/
       render_views_2d.py    2D rendering launcher
       _render_views_2d.py   Blender-side 2D renderer
       render_views_3d.py    3D baking launcher
       _render_views_3d.py   Blender-side mesh/texture exporter
-    texverse/download.py TexVerse source-data downloader
-  methods/               adapters around third-party implementations
+    preprocessing/texverse/download.py
+                          TexVerse source-data downloader
+  methods_2d/            screen-space third-party adapters
+  methods_3d/            UV-space third-party adapters (planned)
   evaluation/            direct and relighting evaluators
-  utils/                 shared, task-independent utilities
 third_party/             upstream methods as Git submodules
 scripts/                 small download and repository utilities
 ```

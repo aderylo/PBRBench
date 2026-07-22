@@ -1,0 +1,9 @@
+name: texverse_pbr_2d
+_target_: src.data.pbr_estimation_dataset_2d.PBREstimationDataset2D
+root: data/texverse_eval
+manifest: manifest_2d.jsonl
+object_ids: null
+view_ids: null
+light_ids: null
+max_samples: null
+validate_files: true
