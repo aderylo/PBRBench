@@ -1,3 +1,5 @@
+# @package rendering
+
 name: blender_cycles
 executable: blender
 resolution: 512

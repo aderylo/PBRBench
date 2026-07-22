@@ -1,0 +1,16 @@
+defaults:
+  - data: texverse_2d
+  - _self_
+
+# This is the `predictions` directory written by `infer_pbr_2d.py`.  Its
+# immediate subdirectories must use the canonical sample-id naming scheme.
+predictions_dir: outputs/pbr_2d/supermat/predictions
+output_file: null
+strict: false
+
+hydra:
+  run:
+    dir: .
+  output_subdir: null
+  job:
+    chdir: false

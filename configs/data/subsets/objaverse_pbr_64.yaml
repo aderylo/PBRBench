@@ -1,10 +1,5 @@
-dataset: objaverse
-root: data/objaverse
-repo_id: allenai/objaverse
-path_template: glbs/000-001/{id}.glb
-
-# Deterministic sample from the 347 matching assets in the neighboring
-# PBRAgents Objaverse cache. Regenerate with scan_pbr.py --seed 0 --count 64.
+# Deterministic 64-object PBR subset selected from the neighboring PBRAgents
+# Objaverse cache. Keep this subset stable for reproducible comparisons.
 selection:
   seed: 0
   candidate_count: 347
@@ -14,7 +9,7 @@ selection:
     - baseColorTexture
     - metallicRoughnessTexture
 
-train:
+objects:
   - id: 92d1cbc20e8c440aad9be60586d5efa6
   - id: 9f9dae0f8643433ababb03668088b268
   - id: 1217b74ad5fb417b999fcd116bb22089
@@ -64,7 +59,6 @@ train:
   - id: e6ae83e1d03f45df88ed7af6e6a68914
   - id: bbccb58ed815443697cf744951a5e842
 
-val:
   - id: 7fe8ef9f5e724b37a4e03ec9c08eb0c2
   - id: 5bada036ebfe451ab7b01ae723506e15
   - id: 78f5cdf452f54ec08866e0d87e584de6
@@ -74,7 +68,6 @@ val:
   - id: 57cf03a8d2ce428081914966d45bd004
   - id: 5b5a102914d940099b89dd787f2a6ef8
 
-test:
   - id: 3abee9e4162b433c941698240cd2559d
   - id: cc03666eb6b4406b8865385dc9c3046a
   - id: a7b4b0ddfad84606b00e05cd8855d435

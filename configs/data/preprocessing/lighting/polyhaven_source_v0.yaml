@@ -1,4 +1,6 @@
-name: polyhaven_sv_v0
+# @package lighting
+
+name: polyhaven_source_v0
 root: data/envmaps
 resolution: 1k
 format: exr

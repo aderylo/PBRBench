@@ -12,6 +12,16 @@ from pathlib import Path
 import bpy
 from mathutils import Matrix, Vector
 
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(PROJECT_ROOT))
+
+from src.data.preprocessing.utils import (  # noqa: E402
+    BakeJob,
+    LightSpec,
+    ObjectMetadata,
+    RendererSpec,
+)
+
 
 def arguments() -> argparse.Namespace:
     argv = sys.argv[sys.argv.index("--") + 1 :] if "--" in sys.argv else []
@@ -73,11 +83,11 @@ def normalize_asset(
     return transform
 
 
-def configure_cycles(config: dict) -> None:
+def configure_cycles(config: RendererSpec) -> None:
     scene = bpy.context.scene
     scene.render.engine = "CYCLES"
-    scene.cycles.samples = int(config["samples_per_pixel"])
-    scene.cycles.use_denoising = bool(config.get("denoise", True))
+    scene.cycles.samples = config.samples_per_pixel
+    scene.cycles.use_denoising = config.denoise
     scene.cycles.seed = 0
     scene.render.image_settings.file_format = "PNG"
     scene.render.image_settings.color_mode = "RGBA"
@@ -86,14 +96,14 @@ def configure_cycles(config: dict) -> None:
     scene.view_settings.look = "None"
     scene.view_settings.exposure = 0.0
     scene.view_settings.gamma = 1.0
-    scene.render.bake.margin = int(config.get("bake_margin", 16))
+    scene.render.bake.margin = config.bake_margin
 
-    if str(config.get("device", "cpu")).lower() == "cpu":
+    if config.device.lower() == "cpu":
         scene.cycles.device = "CPU"
         return
     try:
         preferences = bpy.context.preferences.addons["cycles"].preferences
-        preferences.compute_device_type = str(config["device"]).upper()
+        preferences.compute_device_type = config.device.upper()
         preferences.get_devices()
         usable = [device for device in preferences.devices if device.type != "CPU"]
         if not usable:
@@ -106,7 +116,7 @@ def configure_cycles(config: dict) -> None:
         scene.cycles.device = "CPU"
 
 
-def setup_environment(light: dict, view_yaw_deg: float) -> float:
+def setup_environment(light: LightSpec) -> None:
     world = bpy.context.scene.world or bpy.data.worlds.new("BenchmarkWorld")
     bpy.context.scene.world = world
     world.use_nodes = True
@@ -114,19 +124,17 @@ def setup_environment(light: dict, view_yaw_deg: float) -> float:
     links = world.node_tree.links
     nodes.clear()
     texture = nodes.new(type="ShaderNodeTexEnvironment")
-    texture.image = bpy.data.images.load(light["path"], check_existing=True)
+    texture.image = bpy.data.images.load(light.path, check_existing=True)
     mapping = nodes.new(type="ShaderNodeMapping")
-    rotation_deg = float(light["rotation_deg"]) + view_yaw_deg
-    mapping.inputs["Rotation"].default_value[2] = math.radians(rotation_deg)
+    mapping.inputs["Rotation"].default_value[2] = math.radians(light.rotation_deg)
     coordinates = nodes.new(type="ShaderNodeTexCoord")
     background = nodes.new(type="ShaderNodeBackground")
-    background.inputs["Strength"].default_value = float(light["strength"])
+    background.inputs["Strength"].default_value = light.strength
     output = nodes.new(type="ShaderNodeOutputWorld")
     links.new(coordinates.outputs["Generated"], mapping.inputs["Vector"])
     links.new(mapping.outputs["Vector"], texture.inputs["Vector"])
     links.new(texture.outputs["Color"], background.inputs["Color"])
     links.new(background.outputs["Background"], output.inputs["Surface"])
-    return rotation_deg
 
 
 def materials(meshes: list[bpy.types.Object]) -> list[bpy.types.Material]:
@@ -198,57 +206,32 @@ def export_obj(path: Path, meshes: list[bpy.types.Object]) -> None:
 
 
 def main() -> None:
-    job = json.loads(arguments().job.read_text())
-    output_dir = Path(job["output_dir"])
+    job = BakeJob.from_dict(json.loads(arguments().job.read_text()))
+    output_dir = Path(job.output_dir)
     clear_scene()
-    imported, meshes = import_asset(Path(job["asset_path"]))
+    imported, meshes = import_asset(Path(job.asset_path))
     normalization = normalize_asset(imported, meshes)
-    configure_cycles(job["renderer"])
-    resolution = int(
-        job["renderer"].get("texture_resolution", job["renderer"]["resolution"])
+    configure_cycles(job.renderer)
+    mesh_path = output_dir / "mesh.obj"
+    metadata_path = output_dir / "metadata.json"
+    texture_paths = [output_dir / "textures" / f"{light.id}.png" for light in job.lights]
+    expected = [mesh_path, metadata_path, *texture_paths]
+    if all(path.is_file() for path in expected) and not job.overwrite:
+        print(f"skip complete {job.object_id}")
+        return
+
+    # Metadata is the completion marker; a failed overwrite must not look valid.
+    metadata_path.unlink(missing_ok=True)
+    export_obj(mesh_path, meshes)
+    for light, texture_path in zip(job.lights, texture_paths):
+        setup_environment(light)
+        bake_texture(texture_path, meshes, job.renderer.texture_resolution)
+
+    metadata = ObjectMetadata(
+        asset_path=job.asset_path,
+        normalization_source_to_world=matrix_rows(normalization),
     )
-
-    for view in job["views"]:
-        view_dir = output_dir / view["id"]
-        mesh_path = view_dir / "mesh.obj"
-        metadata_path = view_dir / "metadata.json"
-        texture_paths = [
-            view_dir / "textures" / f"{light['id']}.png" for light in job["lights"]
-        ]
-        expected = [mesh_path, metadata_path, *texture_paths]
-        if all(path.is_file() for path in expected) and not job["overwrite"]:
-            print(f"skip complete {job['object_id']}/{view['id']}")
-            continue
-
-        export_obj(mesh_path, meshes)
-        baked_lights = []
-        for light, texture_path in zip(job["lights"], texture_paths):
-            rotation_deg = setup_environment(light, float(view["yaw_deg"]))
-            bake_texture(texture_path, meshes, resolution)
-            baked_lights.append(
-                {
-                    "id": light["id"],
-                    "rotation_deg": rotation_deg,
-                    "strength": light["strength"],
-                    "texture": f"textures/{light['id']}.png",
-                }
-            )
-
-        metadata = {
-            "schema_version": 2,
-            "representation": "3d",
-            "object_id": job["object_id"],
-            "asset_path": job["asset_path"],
-            "view_id": view["id"],
-            "yaw_deg": view["yaw_deg"],
-            "mesh": "mesh.obj",
-            "texture_resolution": [resolution, resolution],
-            "normalization_source_to_world": matrix_rows(normalization),
-            "lights": baked_lights,
-            "renderer": job["renderer"],
-            "blender_version": bpy.app.version_string,
-        }
-        metadata_path.write_text(json.dumps(metadata, indent=2) + "\n")
+    metadata_path.write_text(json.dumps(metadata.to_dict(), indent=2) + "\n")
 
 
 if __name__ == "__main__":

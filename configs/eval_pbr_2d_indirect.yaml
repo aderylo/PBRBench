@@ -1,0 +1,22 @@
+defaults:
+  - data: texverse_2d
+  - data/preprocessing/lighting: polyhaven_source_v0
+  - data/preprocessing/rendering: blender_cycles_512
+  - _self_
+
+predictions_dir: outputs/pbr_2d/supermat/predictions
+subset_file: configs/data/subsets/texverse_pbr_100.yaml
+output_file: null
+target_envmaps: null
+exclude_source_light: true
+lpips_backbone: alex
+device: cpu
+model_cache_dir: data/checkpoints/torch
+strict: true
+
+hydra:
+  run:
+    dir: .
+  output_subdir: null
+  job:
+    chdir: false

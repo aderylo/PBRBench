@@ -90,13 +90,10 @@ entrypoint directly.
 ```bash
 # Download the selected source lights
 uv run python scripts/download_polyhaven_envmaps.py \
-  --config configs/lights/polyhaven_sv_v0.yaml
+  --config configs/data/preprocessing/lighting/polyhaven_source_v0.yaml
 
 # Download only the curated 64-object Objaverse PBR subset
 uv run python src/data/preprocessing/objaverse/download.py
-
-# Regenerate that split from the neighboring local Objaverse cache
-uv run python src/data/preprocessing/objaverse/scan_pbr.py
 
 # Render both TexVerse representations (run `module load blender` on the cluster)
 uv run python src/data/preprocessing/render_views_2d.py
@@ -111,9 +108,19 @@ third_party/.venvs/supermat/bin/python src/infer_pbr_2d.py method_2d=supermat
 third_party/.venvs/neural_lightrig/bin/python src/infer_pbr_2d.py \
   method_2d=neural_lightrig
 
-# Restrict a development run without changing the prepared manifest
+# Restrict a development run without changing the prepared dataset
 third_party/.venvs/supermat/bin/python src/infer_pbr_2d.py \
   method_2d=supermat data.max_samples=2
+
+# Evaluate saved predictions directly against the PBR reference maps
+uv run python src/eval_pbr_2d_direct.py \
+  predictions_dir=outputs/pbr_2d/supermat/predictions
+
+# Relight predicted and reference maps in Blender, then compare the renders
+# (run `module load blender` on the cluster)
+uv run python src/eval_pbr_2d_indirect.py \
+  predictions_dir=outputs/pbr_2d/supermat/predictions \
+  'target_envmaps=[newman_cafeteria,suburban_garden]'
 ```
 
 Each inference run stores canonical predictions and its resolved configuration in
@@ -130,9 +137,9 @@ docs/
 src/
   infer_pbr_2d.py        screen-space PBR inference entry point
   infer_pbr_3d.py        UV-space PBR inference entry point (planned)
-  eval_pbr_2d_direct.py  direct map evaluation (planned)
+  eval_pbr_2d_direct.py  direct map evaluation
   eval_pbr_2d_indirect.py
-                          relighting evaluation (planned)
+                          Blender relighting evaluation
   data/
     pbr_estimation_dataset_2d.py
                           manifest-backed screen-space dataset

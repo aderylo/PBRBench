@@ -1,5 +1,5 @@
 defaults:
-  - data: pbr_estimation_2d_texverse
+  - data: texverse_2d
   - method_2d: supermat
   - _self_
 

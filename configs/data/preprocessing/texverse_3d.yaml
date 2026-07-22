@@ -1,0 +1,19 @@
+# @package _global_
+defaults:
+  - /data/preprocessing/lighting: polyhaven_source_v0
+  - /data/preprocessing/rendering: blender_cycles_512
+  - _self_
+
+source:
+  name: texverse
+  root: data/texverse_1k
+  asset_template: glbs/glbs_1k/000-000/{object_id}_1024.glb
+
+subset_file: configs/data/subsets/texverse_pbr_100.yaml
+output_root: data/3d_eval/${source.name}
+blender_log_dir: ${output_root}/logs
+object_ids: null
+max_objects: null
+# Skip fully completed objects. Set false to rebake every object.
+resume: true
+dry_run: false

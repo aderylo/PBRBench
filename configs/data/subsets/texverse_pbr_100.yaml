@@ -1,11 +1,7 @@
-dataset: texverse_1k
-root: data/texverse_1k
-path_template: glbs/glbs_1k/000-000/{id}_1024.glb
-
 # First 100 PBR assets found in the TexVerse-1K 000-000 shard.
-# Splits are asset-disjoint. Keep this order stable so existing deterministic
-# worker assignments and rendered outputs remain reusable.
-train:
+# Keep this order stable so existing deterministic worker assignments and
+# rendered outputs remain reusable.
+objects:
   - id: 000054a8d92d4c80828161fbb235d141
   - id: 0000ae10c2a24d5d90807593d6997f6f
   - id: 000137945ada4c7fad0bea4255a9db21
@@ -87,7 +83,6 @@ train:
   - id: 00393c5304f9491db9917390dbf7f9c2
   - id: 003953702ca0419192f6e6d551740e06
 
-val:
   - id: 003a12574e764c8bb2fc6611481298cb
   - id: 003c29d3d5c64257bc63980e034f6ed0
   - id: 003c37113a904533bfb4d892e397299f
@@ -99,7 +94,6 @@ val:
   - id: 0042346f4d9a4ea9a322ce9b5faa091d
   - id: 004261560f7944e5abb61a68cfb59ada
 
-test:
   - id: 0042fc3936c549e2924b975bd5d8568c
   - id: 0043bab2f2d94bc39961527fe24b0cb4
   - id: 0044ade7b6344c009405c43c110bb8fa

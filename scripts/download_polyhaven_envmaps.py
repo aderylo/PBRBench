@@ -43,7 +43,10 @@ def process_asset(asset_id, output_dir, resolution, format_pref):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--config", default="configs/lights/polyhaven_sv_v0.yaml")
+    parser.add_argument(
+        "--config",
+        default="configs/data/preprocessing/lighting/polyhaven_source_v0.yaml",
+    )
     parser.add_argument("--output-dir", default=None)
     parser.add_argument("--workers", type=int, default=4)
     args = parser.parse_args()

@@ -12,6 +12,18 @@ from pathlib import Path
 import bpy
 from mathutils import Matrix, Vector
 
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(PROJECT_ROOT))
+
+from src.data.preprocessing.utils import (  # noqa: E402
+    CameraMetadata,
+    CameraSpec,
+    LightSpec,
+    RenderJob,
+    RendererSpec,
+    ViewMetadata,
+)
+
 
 def arguments() -> argparse.Namespace:
     argv = sys.argv[sys.argv.index("--") + 1 :] if "--" in sys.argv else []
@@ -70,12 +82,12 @@ def normalize_asset(
     return transform
 
 
-def add_camera(camera_config: dict) -> bpy.types.Object:
+def add_camera(camera_config: CameraSpec) -> bpy.types.Object:
     bpy.ops.object.camera_add()
     camera = bpy.context.object
     camera.name = "BenchmarkCamera"
-    camera.data.lens = float(camera_config["focal_length_mm"])
-    camera.data.sensor_width = float(camera_config["sensor_width_mm"])
+    camera.data.lens = camera_config.focal_length_mm
+    camera.data.sensor_width = camera_config.sensor_width_mm
     camera.data.sensor_fit = "HORIZONTAL"
     bpy.context.scene.camera = camera
     return camera
@@ -95,31 +107,31 @@ def place_camera(
     bpy.context.view_layer.update()
 
 
-def configure_render(config: dict) -> None:
+def configure_render(config: RendererSpec) -> None:
     scene = bpy.context.scene
-    resolution = int(config["resolution"])
+    resolution = config.resolution
     scene.render.resolution_x = resolution
     scene.render.resolution_y = resolution
     scene.render.resolution_percentage = 100
-    scene.render.film_transparent = bool(config.get("transparent_background", True))
+    scene.render.film_transparent = config.transparent_background
     scene.render.image_settings.file_format = "PNG"
     scene.render.image_settings.color_mode = "RGBA"
     scene.render.image_settings.color_depth = "8"
     scene.render.engine = "CYCLES"
-    scene.cycles.samples = int(config["samples_per_pixel"])
-    scene.cycles.use_denoising = bool(config.get("denoise", True))
+    scene.cycles.samples = config.samples_per_pixel
+    scene.cycles.use_denoising = config.denoise
     scene.cycles.seed = 0
     scene.view_settings.view_transform = "Standard"
     scene.view_settings.look = "None"
     scene.view_settings.exposure = 0.0
     scene.view_settings.gamma = 1.0
 
-    if str(config.get("device", "cpu")).lower() == "cpu":
+    if config.device.lower() == "cpu":
         scene.cycles.device = "CPU"
         return
     try:
         preferences = bpy.context.preferences.addons["cycles"].preferences
-        preferences.compute_device_type = str(config["device"]).upper()
+        preferences.compute_device_type = config.device.upper()
         preferences.get_devices()
         usable = [device for device in preferences.devices if device.type != "CPU"]
         if not usable:
@@ -132,7 +144,7 @@ def configure_render(config: dict) -> None:
         scene.cycles.device = "CPU"
 
 
-def setup_environment(item: dict) -> None:
+def setup_environment(item: LightSpec) -> None:
     world = bpy.context.scene.world or bpy.data.worlds.new("BenchmarkWorld")
     bpy.context.scene.world = world
     world.use_nodes = True
@@ -140,14 +152,14 @@ def setup_environment(item: dict) -> None:
     links = world.node_tree.links
     nodes.clear()
     texture = nodes.new(type="ShaderNodeTexEnvironment")
-    texture.image = bpy.data.images.load(item["path"], check_existing=True)
+    texture.image = bpy.data.images.load(item.path, check_existing=True)
     mapping = nodes.new(type="ShaderNodeMapping")
     mapping.inputs["Rotation"].default_value[2] = math.radians(
-        float(item["rotation_deg"])
+        item.rotation_deg
     )
     coordinates = nodes.new(type="ShaderNodeTexCoord")
     background = nodes.new(type="ShaderNodeBackground")
-    background.inputs["Strength"].default_value = float(item["strength"])
+    background.inputs["Strength"].default_value = item.strength
     output = nodes.new(type="ShaderNodeOutputWorld")
     links.new(coordinates.outputs["Generated"], mapping.inputs["Vector"])
     links.new(mapping.outputs["Vector"], texture.inputs["Vector"])
@@ -169,6 +181,29 @@ def render_png(
     scene.view_settings.view_transform = transform
     scene.render.filepath = str(path)
     bpy.ops.render.render(write_still=True)
+
+
+def render_binary_mask(path: Path, threshold: float = 0.5) -> int:
+    """Render a mask, binarize coverage, and return its foreground pixel count."""
+    scene = bpy.context.scene
+    path.parent.mkdir(parents=True, exist_ok=True)
+    scene.render.image_settings.color_mode = "BW"
+    scene.render.image_settings.color_depth = "8"
+    scene.view_settings.view_transform = "Raw"
+    bpy.ops.render.render()
+
+    image = bpy.data.images["Render Result"]
+    pixels = list(image.pixels[:])
+    foreground_pixels = 0
+    for offset in range(0, len(pixels), 4):
+        foreground = pixels[offset] >= threshold
+        value = 1.0 if foreground else 0.0
+        pixels[offset : offset + 3] = (value, value, value)
+        pixels[offset + 3] = 1.0
+        foreground_pixels += int(foreground)
+    image.pixels[:] = pixels
+    image.save_render(str(path), scene=scene)
+    return foreground_pixels
 
 
 def all_materials(meshes: list[bpy.types.Object]) -> list[bpy.types.Material]:
@@ -307,7 +342,10 @@ def depth_range(
 
 
 def render_reference_passes(
-    view_dir: Path, meshes: list[bpy.types.Object], camera: bpy.types.Object
+    view_dir: Path,
+    meshes: list[bpy.types.Object],
+    camera: bpy.types.Object,
+    min_foreground_pixels: int,
 ) -> tuple[float, float]:
     scene = bpy.context.scene
     scene.render.engine = "BLENDER_EEVEE"
@@ -328,7 +366,6 @@ def render_reference_passes(
     for channel, material, mode, bits in (
         ("normal", emission_material("BenchmarkNormal", "normal"), "RGB", "16"),
         ("depth", emission_material("BenchmarkDepth", "depth", near, far), "BW", "16"),
-        ("mask", emission_material("BenchmarkMask", "mask"), "BW", "8"),
     ):
         bpy.context.view_layer.material_override = material
         render_png(
@@ -337,46 +374,52 @@ def render_reference_passes(
             color_depth=bits,
             transform="Raw",
         )
+    bpy.context.view_layer.material_override = emission_material(
+        "BenchmarkMask", "mask"
+    )
+    foreground_pixels = render_binary_mask(view_dir / "mask.png")
     bpy.context.view_layer.material_override = None
+    if foreground_pixels < min_foreground_pixels:
+        raise RuntimeError(
+            f"Invalid mask: {foreground_pixels} foreground pixels, expected at least "
+            f"{min_foreground_pixels}"
+        )
     return near, far
 
 
-def camera_metadata(camera: bpy.types.Object, resolution: int) -> dict:
+def camera_metadata(camera: bpy.types.Object, resolution: int) -> CameraMetadata:
     focal = float(camera.data.lens)
     sensor = float(camera.data.sensor_width)
     f_pixels = focal / sensor * resolution
-    return {
-        "model": "perspective",
-        "resolution": [resolution, resolution],
-        "intrinsics": [
+    return CameraMetadata(
+        resolution=(resolution, resolution),
+        intrinsics=[
             [f_pixels, 0.0, resolution / 2],
             [0.0, f_pixels, resolution / 2],
             [0.0, 0.0, 1.0],
         ],
-        "camera_to_world": matrix_rows(camera.matrix_world),
-        "world_to_camera": matrix_rows(camera.matrix_world.inverted()),
-        "coordinate_system": "Blender camera: +X right, +Y up, -Z forward",
-    }
+        camera_to_world=matrix_rows(camera.matrix_world),
+    )
 
 
 def main() -> None:
-    job = json.loads(arguments().job.read_text())
-    output_dir = Path(job["output_dir"])
+    job = RenderJob.from_dict(json.loads(arguments().job.read_text()))
+    output_dir = Path(job.output_dir)
     clear_scene()
-    imported, meshes = import_asset(Path(job["asset_path"]))
+    imported, meshes = import_asset(Path(job.asset_path))
     normalization = normalize_asset(imported, meshes)
-    camera = add_camera(job["camera"])
-    configure_render(job["renderer"])
+    camera = add_camera(job.camera)
+    configure_render(job.renderer)
     original_engine = bpy.context.scene.render.engine
 
     # Render every illumination observation before modifying material graphs for
     # reference passes. Otherwise the next view would see the preceding PBR
     # channel material instead of the original authored material.
     pending_views = []
-    for view in job["views"]:
-        view_dir = output_dir / view["id"]
+    for view in job.views:
+        view_dir = output_dir / view.id
         metadata_path = view_dir / "metadata.json"
-        expected = [view_dir / "rgb" / f"{item['id']}.png" for item in job["lights"]]
+        expected = [view_dir / "rgb" / f"{item.id}.png" for item in job.lights]
         expected += [
             view_dir / f"{name}.png"
             for name in ("albedo", "roughness", "metallic", "normal", "depth", "mask")
@@ -384,70 +427,51 @@ def main() -> None:
         if (
             metadata_path.is_file()
             and all(path.is_file() for path in expected)
-            and not job["overwrite"]
+            and not job.overwrite
         ):
-            print(f"skip complete {job['object_id']}/{view['id']}")
+            print(f"skip complete {job.object_id}/{view.id}")
             continue
 
+        # Metadata is the completion marker. Remove a stale marker before
+        # writing any output so failed/partial renders are never discovered.
+        metadata_path.unlink(missing_ok=True)
         pending_views.append(view)
 
         place_camera(
             camera,
-            view["yaw_deg"],
-            float(job["camera"]["elevation_deg"]),
-            float(job["camera"]["distance"]),
+            view.yaw_deg,
+            job.camera.elevation_deg,
+            job.camera.distance,
         )
         bpy.context.scene.render.engine = original_engine
-        for light in job["lights"]:
+        for light in job.lights:
             setup_environment(light)
             render_png(
-                view_dir / "rgb" / f"{light['id']}.png",
+                view_dir / "rgb" / f"{light.id}.png",
                 color_mode="RGBA",
                 color_depth="8",
                 transform="Standard",
             )
 
     for view in pending_views:
-        view_dir = output_dir / view["id"]
+        view_dir = output_dir / view.id
         metadata_path = view_dir / "metadata.json"
         place_camera(
             camera,
-            view["yaw_deg"],
-            float(job["camera"]["elevation_deg"]),
-            float(job["camera"]["distance"]),
+            view.yaw_deg,
+            job.camera.elevation_deg,
+            job.camera.distance,
         )
-        near, far = render_reference_passes(view_dir, meshes, camera)
-        metadata = {
-            "schema_version": 2,
-            "representation": "2d",
-            "object_id": job["object_id"],
-            "asset_path": job["asset_path"],
-            "view_id": view["id"],
-            "yaw_deg": view["yaw_deg"],
-            "elevation_deg": job["camera"]["elevation_deg"],
-            "camera": camera_metadata(camera, int(job["renderer"]["resolution"])),
-            "normalization_source_to_world": matrix_rows(normalization),
-            "normal": {"space": "camera", "encoding": "uint16 PNG, (normal + 1) / 2"},
-            "depth": {
-                "encoding": "uint16 PNG",
-                "near": near,
-                "far": far,
-                "value": "(z - near) / (far - near)",
-            },
-            "lights": [
-                {
-                    "id": item["id"],
-                    "rotation_deg": item["rotation_deg"],
-                    "strength": item["strength"],
-                    "rgb": f"rgb/{item['id']}.png",
-                }
-                for item in job["lights"]
-            ],
-            "renderer": job["renderer"],
-            "blender_version": bpy.app.version_string,
-        }
+        render_reference_passes(
+            view_dir, meshes, camera, job.min_foreground_pixels
+        )
+        metadata = ViewMetadata(
+            asset_path=job.asset_path,
+            camera=camera_metadata(camera, job.renderer.resolution),
+            normalization_source_to_world=matrix_rows(normalization),
+        )
         metadata_path.parent.mkdir(parents=True, exist_ok=True)
-        metadata_path.write_text(json.dumps(metadata, indent=2) + "\n")
+        metadata_path.write_text(json.dumps(metadata.to_dict(), indent=2) + "\n")
 
 
 if __name__ == "__main__":

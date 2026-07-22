@@ -1,4 +1,4 @@
-"""Download only the Objaverse GLBs named by an object split."""
+"""Download only the Objaverse GLBs named by a benchmark subset."""
 
 from __future__ import annotations
 
@@ -14,21 +14,17 @@ PROJECT_ROOT = rootutils.setup_root(
     __file__, indicator=".project_root", pythonpath=True
 )
 
-DEFAULT_SPLIT = PROJECT_ROOT / "configs/data/splits/objaverse_pbr_64.yaml"
+DEFAULT_SUBSET = PROJECT_ROOT / "configs/data/subsets/objaverse_pbr_64.yaml"
 DEFAULT_OUTPUT_DIR = PROJECT_ROOT / "data/objaverse"
 DEFAULT_REPO_ID = "allenai/objaverse"
+DEFAULT_PATH_TEMPLATE = "glbs/000-001/{id}.glb"
 
 
-def load_objects(split_path: Path, partition: str = "all") -> list[dict[str, str]]:
-    split = yaml.safe_load(split_path.read_text()) or {}
-    names = ("train", "val", "test") if partition == "all" else (partition,)
-    objects = [item for name in names for item in split.get(name, [])]
+def load_objects(subset_path: Path, path_template: str) -> list[dict[str, str]]:
+    subset = yaml.safe_load(subset_path.read_text()) or {}
+    objects = subset.get("objects", [])
     if not objects:
-        raise ValueError(f"Object split/partition '{partition}' is empty: {split_path}")
-
-    path_template = split.get("path_template")
-    if not path_template:
-        raise ValueError(f"Split has no path_template: {split_path}")
+        raise ValueError(f"Object subset is empty: {subset_path}")
 
     parsed = [
         {
@@ -39,7 +35,7 @@ def load_objects(split_path: Path, partition: str = "all") -> list[dict[str, str
     ]
     ids = [item["id"] for item in parsed]
     if len(ids) != len(set(ids)):
-        raise ValueError(f"Object split contains duplicate ids: {split_path}")
+        raise ValueError(f"Object subset contains duplicate ids: {subset_path}")
     return parsed
 
 
@@ -54,13 +50,13 @@ def download_one(item: dict[str, str], output_dir: Path, repo_id: str) -> str:
 
 
 def download(
-    split_path: Path,
+    subset_path: Path,
     output_dir: Path,
     repo_id: str,
-    partition: str = "all",
+    path_template: str,
     workers: int = 4,
 ) -> None:
-    objects = load_objects(split_path, partition)
+    objects = load_objects(subset_path, path_template)
     pending = [item for item in objects if not (output_dir / item["path"]).is_file()]
     if not pending:
         print(f"All {len(objects)} requested objects already exist in {output_dir}")
@@ -82,12 +78,10 @@ def download(
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--split", type=Path, default=DEFAULT_SPLIT)
+    parser.add_argument("--subset", type=Path, default=DEFAULT_SUBSET)
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
     parser.add_argument("--repo-id", default=DEFAULT_REPO_ID)
-    parser.add_argument(
-        "--partition", choices=("all", "train", "val", "test"), default="all"
-    )
+    parser.add_argument("--path-template", default=DEFAULT_PATH_TEMPLATE)
     parser.add_argument("--workers", type=int, default=4)
     arguments = parser.parse_args()
     if arguments.workers < 1:
@@ -98,9 +92,9 @@ def parse_args() -> argparse.Namespace:
 if __name__ == "__main__":
     arguments = parse_args()
     download(
-        arguments.split.expanduser().resolve(),
+        arguments.subset.expanduser().resolve(),
         arguments.output_dir.expanduser().resolve(),
         arguments.repo_id,
-        arguments.partition,
+        arguments.path_template,
         arguments.workers,
     )
