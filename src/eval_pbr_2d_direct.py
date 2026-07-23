@@ -52,6 +52,7 @@ class DirectSampleResult:
     view_id: str
     light_id: str
     metrics: dict[str, dict[str, float]]
+    source: str = ""
 
 
 @dataclass(frozen=True)
@@ -107,9 +108,10 @@ def evaluate(config: DictConfig) -> DirectEvaluationPayload:
     """Evaluate prediction artifacts registered in the configured 2D dataset."""
     predictions_dir = project_path(config.predictions_dir)
     log.info("Instantiating dataset <%s>", config.data._target_)
-    dataset: PBREstimationDataset2D = instantiate(
-        config.data, root=project_path(config.data.root)
-    )
+    dataset_overrides = {}
+    if hasattr(config.data, "root") and config.data.root:
+        dataset_overrides["root"] = project_path(config.data.root)
+    dataset = instantiate(config.data, **dataset_overrides)
     samples = {sample.sample_id: sample for sample in dataset}
     predictions = scan_predictions(predictions_dir, CHANNELS)
 
@@ -134,6 +136,7 @@ def evaluate(config: DictConfig) -> DirectEvaluationPayload:
                 view_id=sample.view_id,
                 light_id=sample.light_id,
                 metrics=metrics,
+                source=sample.source,
             )
             log.info("Evaluated %s", sample_id)
         except (FileNotFoundError, ValueError) as error:

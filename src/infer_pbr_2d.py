@@ -37,9 +37,10 @@ def is_complete(sample_dir: Path) -> bool:
 def infer(config: DictConfig) -> None:
     """Instantiate dataset & estimator, filter pending samples, and run prediction."""
     log.info(f"Instantiating dataset <{config.data._target_}>")
-    dataset: PBREstimationDataset2D = instantiate(
-        config.data, root=project_path(config.data.root)
-    )
+    dataset_overrides = {}
+    if hasattr(config.data, "root") and config.data.root:
+        dataset_overrides["root"] = project_path(config.data.root)
+    dataset = instantiate(config.data, **dataset_overrides)
 
     log.info(f"Instantiating estimator <{config.method_2d._target_}>")
     estimator: BaseMaterialEstimator2D = instantiate(

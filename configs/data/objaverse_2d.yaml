@@ -1,4 +1,5 @@
 name: objaverse
+source: objaverse
 _target_: src.data.pbr_estimation_dataset_2d.PBREstimationDataset2D
 root: data/2d_eval/objaverse
 object_ids: null

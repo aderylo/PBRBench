@@ -135,6 +135,10 @@ third_party/.venvs/supermat/bin/python src/infer_pbr_2d.py method_2d=supermat
 third_party/.venvs/neural_lightrig/bin/python src/infer_pbr_2d.py \
   method_2d=neural_lightrig
 
+# Physics-only diffuse albedo from expanded Blender relightings and proxies
+# (run `module load blender` first)
+uv run python src/infer_pbr_2d.py method_2d=switchlight
+
 # Restrict a development run without changing the prepared dataset
 third_party/.venvs/supermat/bin/python src/infer_pbr_2d.py \
   method_2d=supermat data.max_samples=2

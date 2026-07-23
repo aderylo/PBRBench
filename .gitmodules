@@ -7,3 +7,6 @@
 [submodule "third_party/MaterialAnything"]
 	path = third_party/MaterialAnything
 	url = https://github.com/3DTopia/MaterialAnything.git
+[submodule "third_party/diffusion-renderer"]
+	path = third_party/diffusion-renderer
+	url = https://github.com/nv-tlabs/diffusion-renderer.git

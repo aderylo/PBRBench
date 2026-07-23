@@ -1,0 +1,11 @@
+name: diffusion_renderer
+_target_: src.methods_2d.diffusion_renderer.DiffusionRenderer2D
+repo_root: third_party/diffusion-renderer
+config_path: third_party/diffusion-renderer/configs/rgbx_inference.yaml
+checkpoint_dir: third_party/diffusion-renderer/checkpoints/diffusion_renderer-inverse-svd
+device: cuda:0
+image_size: 512
+n_steps: 20
+dummy_roughness: 0.5
+dummy_metallic: 0.0
+seed: 0

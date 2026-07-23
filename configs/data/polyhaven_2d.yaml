@@ -1,4 +1,5 @@
 name: polyhaven
+source: polyhaven
 _target_: src.data.pbr_estimation_dataset_2d.PBREstimationDataset2D
 root: data/2d_eval/polyhaven
 object_ids: null

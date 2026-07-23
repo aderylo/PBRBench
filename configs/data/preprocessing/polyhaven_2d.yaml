@@ -2,7 +2,7 @@
 defaults:
   - /data/preprocessing/lighting: polyhaven_source_v0
   - /data/preprocessing/rendering: blender_cycles_512
-  - /data/preprocessing/views: orbit_6
+  - /data/preprocessing/views: orbit_1
   - _self_
 
 source:

@@ -62,6 +62,7 @@ class IndirectSampleResult:
     light_id: str
     metrics: dict[str, float]
     targets: dict[str, dict[str, float]]
+    source: str = ""
 
 
 @dataclass(frozen=True)
@@ -218,7 +219,9 @@ def build_job(
 def evaluate(config: DictConfig) -> IndirectEvaluationPayload:
     """Relight registered predictions and evaluate their rendered appearance."""
     predictions_dir = project_path(config.predictions_dir)
-    dataset_overrides = {"root": project_path(config.data.root)}
+    dataset_overrides = {}
+    if hasattr(config.data, "root") and config.data.root:
+        dataset_overrides["root"] = project_path(config.data.root)
     if config.get("subset_file"):
         dataset_overrides["object_ids"] = load_subset(project_path(config.subset_file))
     log.info("Instantiating dataset <%s>", config.data._target_)
@@ -260,7 +263,7 @@ def evaluate(config: DictConfig) -> IndirectEvaluationPayload:
         results: dict[str, IndirectSampleResult] = {}
         all_target_metrics: list[dict[str, float]] = []
         sample_lookup = {sample.sample_id: sample for sample in samples}
-        for sample_id, target_paths in state["score_paths"].items():
+        for sample_id, target_paths in state.score_paths.items():
             target_results = {}
             try:
                 for target_id, (prediction_path, gt_path) in target_paths.items():
@@ -279,6 +282,7 @@ def evaluate(config: DictConfig) -> IndirectEvaluationPayload:
                     light_id=sample.light_id,
                     metrics=mean_metrics(target_results.values()),
                     targets=target_results,
+                    source=sample.source,
                 )
                 log.info("Evaluated %s", sample_id)
             except (FileNotFoundError, ValueError) as error:

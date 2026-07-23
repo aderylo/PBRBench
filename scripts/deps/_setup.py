@@ -15,7 +15,10 @@ def setup_method(
     repository: str,
     *,
     python: str = "3.11",
+    bootstrap_requirements: tuple[str, ...] = (),
+    exclude_requirements: str | None = None,
     extra_requirements: tuple[str, ...] = (),
+    no_build_isolation_packages: tuple[str, ...] = (),
 ) -> None:
     """Create a uv environment containing the benchmark and method dependencies."""
     repository_root = PROJECT_ROOT / repository
@@ -25,8 +28,21 @@ def setup_method(
 
     environment = PROJECT_ROOT / "third_party/.venvs" / method
     subprocess.run(
-        ["uv", "venv", "--python", python, str(environment)], check=True
+        ["uv", "venv", "--python", python, "--allow-existing", str(environment)],
+        check=True,
     )
+    if bootstrap_requirements:
+        subprocess.run(
+            [
+                "uv",
+                "pip",
+                "install",
+                "--python",
+                str(environment / "bin/python"),
+                *bootstrap_requirements,
+            ],
+            check=True,
+        )
     subprocess.run(
         [
             "uv",
@@ -39,6 +55,16 @@ def setup_method(
             "-r",
             str(requirements),
             *extra_requirements,
+            *(
+                ("--excludes", str(PROJECT_ROOT / exclude_requirements))
+                if exclude_requirements is not None
+                else ()
+            ),
+            *(
+                option
+                for package in no_build_isolation_packages
+                for option in ("--no-build-isolation-package", package)
+            ),
         ],
         check=True,
     )
@@ -49,7 +75,10 @@ def setup_method_cli(
     method: str,
     repository: str,
     *,
+    bootstrap_requirements: tuple[str, ...] = (),
+    exclude_requirements: str | None = None,
     extra_requirements: tuple[str, ...] = (),
+    no_build_isolation_packages: tuple[str, ...] = (),
 ) -> None:
     """Parse common command-line options and prepare a method environment."""
     parser = argparse.ArgumentParser(
@@ -61,5 +90,8 @@ def setup_method_cli(
         method,
         repository,
         python=args.python,
+        bootstrap_requirements=bootstrap_requirements,
+        exclude_requirements=exclude_requirements,
         extra_requirements=extra_requirements,
+        no_build_isolation_packages=no_build_isolation_packages,
     )

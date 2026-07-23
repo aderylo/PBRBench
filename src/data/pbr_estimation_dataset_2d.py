@@ -25,6 +25,7 @@ class PBREstimationSample2D:
     metallic: Path | None = None
     depth: Path | None = None
     metadata: Mapping[str, Any] = field(default_factory=dict, repr=False)
+    source: str = ""
 
 
 class PBREstimationDataset2D(Sequence[PBREstimationSample2D]):
@@ -35,6 +36,7 @@ class PBREstimationDataset2D(Sequence[PBREstimationSample2D]):
         root: str | Path,
         *,
         name: str = "pbr_estimation_2d",
+        source: str | None = None,
         object_ids: Sequence[str] | None = None,
         view_ids: Sequence[str] | None = None,
         light_ids: Sequence[str] | None = None,
@@ -42,6 +44,7 @@ class PBREstimationDataset2D(Sequence[PBREstimationSample2D]):
         validate_files: bool = True,
     ) -> None:
         self.name = name
+        self.source = source or name
         self.root = Path(root).resolve()
         if not self.root.is_dir():
             raise FileNotFoundError(f"2D dataset root not found: {self.root}")
@@ -86,7 +89,7 @@ class PBREstimationDataset2D(Sequence[PBREstimationSample2D]):
                 self._validate_identifier(light_id, "light_id", rgb_path)
                 if selected_lights is not None and light_id not in selected_lights:
                     continue
-                sample_id = f"{object_id}__{view_id}__{light_id}"
+                sample_id = f"{self.source}__{object_id}__{view_id}__{light_id}"
                 if sample_id in self._sample_map:
                     raise ValueError(f"Duplicate sample_id: {sample_id}")
                 if validate_files and not rgb_path.is_file():
@@ -107,6 +110,7 @@ class PBREstimationDataset2D(Sequence[PBREstimationSample2D]):
                     metallic=self._optional_file(view_dir / "metallic.png"),
                     depth=self._optional_file(view_dir / "depth.png"),
                     metadata=metadata,
+                    source=self.source,
                 )
                 samples.append(sample)
                 self._sample_map[sample_id] = sample
@@ -137,3 +141,94 @@ class PBREstimationDataset2D(Sequence[PBREstimationSample2D]):
 
     def __iter__(self) -> Iterator[PBREstimationSample2D]:
         return iter(self._samples)
+
+
+class MultiSourcePBREstimationDataset2D(Sequence[PBREstimationSample2D]):
+    """Discover completed observation directories across multiple data sources."""
+
+    def __init__(
+        self,
+        sources: Mapping[str, str | Path | Mapping[str, Any]],
+        *,
+        name: str = "all_2d",
+        object_ids: Sequence[str] | None = None,
+        view_ids: Sequence[str] | None = None,
+        light_ids: Sequence[str] | None = None,
+        max_samples: int | None = None,
+        validate_files: bool = True,
+    ) -> None:
+        self.name = name
+        self.roots: dict[str, Path] = {}
+        self._datasets: dict[str, PBREstimationDataset2D] = {}
+        self._sample_map: dict[str, PBREstimationSample2D] = {}
+
+        if max_samples is not None and max_samples < 0:
+            raise ValueError("max_samples must be non-negative or null")
+
+        samples: list[PBREstimationSample2D] = []
+        project_root = Path(__file__).resolve().parents[2]
+
+        for source_name, source_cfg in sources.items():
+            if max_samples is not None and len(samples) >= max_samples:
+                break
+
+            if isinstance(source_cfg, (str, Path)):
+                root_path = Path(source_cfg)
+                source_kwargs: dict[str, Any] = {}
+            elif isinstance(source_cfg, Mapping):
+                root_path = Path(source_cfg["root"])
+                source_kwargs = {k: v for k, v in source_cfg.items() if k != "root"}
+            else:
+                raise TypeError(
+                    f"Invalid source config for {source_name}: {source_cfg}"
+                )
+
+            root_path = (
+                root_path
+                if root_path.is_absolute()
+                else (project_root / root_path).resolve()
+            )
+            self.roots[source_name] = root_path
+
+            sub_ds = PBREstimationDataset2D(
+                root=root_path,
+                name=source_name,
+                source=source_name,
+                object_ids=source_kwargs.get("object_ids", object_ids),
+                view_ids=source_kwargs.get("view_ids", view_ids),
+                light_ids=source_kwargs.get("light_ids", light_ids),
+                max_samples=source_kwargs.get("max_samples", None),
+                validate_files=source_kwargs.get("validate_files", validate_files),
+            )
+            self._datasets[source_name] = sub_ds
+
+            for sample in sub_ds:
+                if sample.sample_id in self._sample_map:
+                    raise ValueError(
+                        f"Duplicate sample_id across sources: {sample.sample_id}"
+                    )
+                samples.append(sample)
+                self._sample_map[sample.sample_id] = sample
+                if max_samples is not None and len(samples) >= max_samples:
+                    break
+
+        self._samples = tuple(samples)
+
+    @property
+    def root(self) -> str:
+        """String representation of roots for backwards compatibility with logging/payloads."""
+        return json.dumps({k: str(v) for k, v in self.roots.items()})
+
+    def get_sample(self, sample_id: str) -> PBREstimationSample2D | None:
+        """Get one sample by its canonical ID."""
+        return self._sample_map.get(sample_id)
+
+    def __len__(self) -> int:
+        return len(self._samples)
+
+    def __getitem__(self, index: int) -> PBREstimationSample2D:
+        return self._samples[index]
+
+    def __iter__(self) -> Iterator[PBREstimationSample2D]:
+        return iter(self._samples)
+

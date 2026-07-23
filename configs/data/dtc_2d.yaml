@@ -1,4 +1,5 @@
 name: dtc
+source: dtc
 _target_: src.data.pbr_estimation_dataset_2d.PBREstimationDataset2D
 root: data/2d_eval/dtc
 object_ids: null
