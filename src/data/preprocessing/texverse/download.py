@@ -9,27 +9,39 @@ benchmark samples are produced separately by the launchers in
 from __future__ import annotations
 
 import argparse
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
+import rootutils
 import yaml
 from huggingface_hub import hf_hub_download
 
+PROJECT_ROOT = rootutils.setup_root(__file__, indicator=".project_root", pythonpath=True)
+
+from src.data.preprocessing._assets import canonical_asset_path, install_file  # noqa: E402
+
+DEFAULT_SUBSET = PROJECT_ROOT / "configs/data/subsets/texverse_pbr_64.yaml"
+DEFAULT_ASSETS_ROOT = PROJECT_ROOT / "data/assets"
 DEFAULT_REPO_ID = "YiboZhang2001/TexVerse-1K"
+DEFAULT_PATH_TEMPLATE = "glbs/glbs_1k/000-000/{id}_1024.glb"
+SOURCE_NAME = "texverse"
 
 
-def load_objects(subset_path: Path) -> list[dict[str, str]]:
+def load_objects(
+    subset_path: Path, path_template: str = DEFAULT_PATH_TEMPLATE
+) -> list[dict[str, str]]:
     subset = yaml.safe_load(subset_path.read_text()) or {}
     objects = subset.get("objects", [])
     if not objects:
         raise ValueError(f"Object subset is empty: {subset_path}")
 
-    path_template = subset.get("path_template")
+    path_template = str(subset.get("path_template", path_template))
     parsed = []
     for item in objects:
         object_id = str(item["id"])
         path = item.get("path")
-        if path is None and path_template is not None:
-            path = str(path_template).format(id=object_id)
+        if path is None:
+            path = path_template.format(id=object_id)
         if path is None:
             raise ValueError(f"Object '{object_id}' has no path in subset: {subset_path}")
         parsed.append({"id": object_id, "path": str(path)})
@@ -40,43 +52,78 @@ def load_objects(subset_path: Path) -> list[dict[str, str]]:
     return parsed
 
 
-def download(subset_path: Path, output_dir: Path, repo_id: str) -> None:
-    objects = load_objects(subset_path)
-    pending = [item for item in objects if not (output_dir / item["path"]).is_file()]
-    if not pending:
-        print(f"All {len(objects)} objects already exist in {output_dir}")
-        return
-
-    for index, item in enumerate(pending, start=1):
-        print(f"[{index}/{len(pending)}] {item['id']}")
+def download_one(item: dict[str, str], assets_root: Path, repo_id: str) -> str:
+    """Fetch a source GLB and atomically install it at its canonical path."""
+    source_path = Path(
         hf_hub_download(
             repo_id=repo_id,
             filename=item["path"],
             repo_type="dataset",
-            local_dir=output_dir,
         )
+    )
+    install_file(
+        source_path, canonical_asset_path(assets_root, SOURCE_NAME, item["id"])
+    )
+    return "downloaded"
 
-    print(f"Downloaded {len(pending)} objects to {output_dir}")
+
+def download(
+    subset_path: Path,
+    assets_root: Path,
+    repo_id: str,
+    path_template: str = DEFAULT_PATH_TEMPLATE,
+    workers: int = 4,
+) -> None:
+    objects = load_objects(subset_path, path_template)
+    pending = [
+        item
+        for item in objects
+        if not canonical_asset_path(assets_root, SOURCE_NAME, item["id"]).is_file()
+    ]
+    if not pending:
+        print(f"All {len(objects)} objects already exist in {assets_root / SOURCE_NAME}")
+        return
+
+    assets_root.mkdir(parents=True, exist_ok=True)
+    with ThreadPoolExecutor(max_workers=workers) as executor:
+        futures = {
+            executor.submit(download_one, item, assets_root, repo_id): item
+            for item in pending
+        }
+        for index, future in enumerate(as_completed(futures), start=1):
+            item = futures[future]
+            result = future.result()
+            print(f"[{index}/{len(pending)}] {item['id']}: {result}")
+
+    print(f"Downloaded {len(pending)} objects to {assets_root / SOURCE_NAME}")
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--subset", type=Path, default=DEFAULT_SUBSET)
     parser.add_argument(
-        "--subset", required=True, type=Path, help="TexVerse benchmark subset YAML"
-    )
-    parser.add_argument(
-        "--output-dir", required=True, type=Path, help="Local TexVerse root"
+        "--assets-root",
+        type=Path,
+        default=DEFAULT_ASSETS_ROOT,
+        help="Canonical source-asset root; files go to data/assets/texverse/<id>.glb",
     )
     parser.add_argument(
         "--repo-id", default=DEFAULT_REPO_ID, help="Hugging Face dataset repository"
     )
-    return parser.parse_args()
+    parser.add_argument("--path-template", default=DEFAULT_PATH_TEMPLATE)
+    parser.add_argument("--workers", type=int, default=4)
+    arguments = parser.parse_args()
+    if arguments.workers < 1:
+        parser.error("--workers must be at least 1")
+    return arguments
 
 
 if __name__ == "__main__":
     arguments = parse_args()
     download(
         arguments.subset.expanduser().resolve(),
-        arguments.output_dir.expanduser().resolve(),
+        arguments.assets_root.expanduser().resolve(),
         arguments.repo_id,
+        arguments.path_template,
+        arguments.workers,
     )

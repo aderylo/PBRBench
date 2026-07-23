@@ -7,8 +7,8 @@ defaults:
 
 source:
   name: objaverse
-  root: data/objaverse
-  asset_template: glbs/000-001/{object_id}.glb
+  root: data/assets
+  asset_template: objaverse/{object_id}.glb
 
 subset_file: configs/data/subsets/objaverse_pbr_64.yaml
 output_root: data/2d_eval/${source.name}

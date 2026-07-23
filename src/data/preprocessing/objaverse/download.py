@@ -10,14 +10,15 @@ import rootutils
 import yaml
 from huggingface_hub import hf_hub_download
 
-PROJECT_ROOT = rootutils.setup_root(
-    __file__, indicator=".project_root", pythonpath=True
-)
+PROJECT_ROOT = rootutils.setup_root(__file__, indicator=".project_root", pythonpath=True)
+
+from src.data.preprocessing._assets import canonical_asset_path, install_file  # noqa: E402
 
 DEFAULT_SUBSET = PROJECT_ROOT / "configs/data/subsets/objaverse_pbr_64.yaml"
-DEFAULT_OUTPUT_DIR = PROJECT_ROOT / "data/objaverse"
+DEFAULT_ASSETS_ROOT = PROJECT_ROOT / "data/assets"
 DEFAULT_REPO_ID = "allenai/objaverse"
 DEFAULT_PATH_TEMPLATE = "glbs/000-001/{id}.glb"
+SOURCE_NAME = "objaverse"
 
 
 def load_objects(subset_path: Path, path_template: str) -> list[dict[str, str]]:
@@ -39,47 +40,64 @@ def load_objects(subset_path: Path, path_template: str) -> list[dict[str, str]]:
     return parsed
 
 
-def download_one(item: dict[str, str], output_dir: Path, repo_id: str) -> str:
-    hf_hub_download(
-        repo_id=repo_id,
-        filename=item["path"],
-        repo_type="dataset",
-        local_dir=output_dir,
+def download_one(item: dict[str, str], assets_root: Path, repo_id: str) -> str:
+    """Fetch a source GLB and atomically install it at its canonical path."""
+    source_path = Path(
+        hf_hub_download(
+            repo_id=repo_id,
+            filename=item["path"],
+            repo_type="dataset",
+        )
     )
-    return item["id"]
+    install_file(
+        source_path, canonical_asset_path(assets_root, SOURCE_NAME, item["id"])
+    )
+    return "downloaded"
 
 
 def download(
     subset_path: Path,
-    output_dir: Path,
+    assets_root: Path,
     repo_id: str,
     path_template: str,
     workers: int = 4,
 ) -> None:
     objects = load_objects(subset_path, path_template)
-    pending = [item for item in objects if not (output_dir / item["path"]).is_file()]
+    pending = [
+        item
+        for item in objects
+        if not canonical_asset_path(assets_root, SOURCE_NAME, item["id"]).is_file()
+    ]
     if not pending:
-        print(f"All {len(objects)} requested objects already exist in {output_dir}")
+        print(
+            f"All {len(objects)} requested objects already exist in "
+            f"{assets_root / SOURCE_NAME}"
+        )
         return
 
-    output_dir.mkdir(parents=True, exist_ok=True)
+    assets_root.mkdir(parents=True, exist_ok=True)
     with ThreadPoolExecutor(max_workers=workers) as executor:
         futures = {
-            executor.submit(download_one, item, output_dir, repo_id): item
+            executor.submit(download_one, item, assets_root, repo_id): item
             for item in pending
         }
         for index, future in enumerate(as_completed(futures), start=1):
             item = futures[future]
-            future.result()
-            print(f"[{index}/{len(pending)}] {item['id']}")
+            result = future.result()
+            print(f"[{index}/{len(pending)}] {item['id']}: {result}")
 
-    print(f"Downloaded {len(pending)} objects to {output_dir}")
+    print(f"Downloaded {len(pending)} objects to {assets_root / SOURCE_NAME}")
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--subset", type=Path, default=DEFAULT_SUBSET)
-    parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
+    parser.add_argument(
+        "--assets-root",
+        type=Path,
+        default=DEFAULT_ASSETS_ROOT,
+        help="Canonical source-asset root; files go to data/assets/objaverse/<id>.glb",
+    )
     parser.add_argument("--repo-id", default=DEFAULT_REPO_ID)
     parser.add_argument("--path-template", default=DEFAULT_PATH_TEMPLATE)
     parser.add_argument("--workers", type=int, default=4)
@@ -93,7 +111,7 @@ if __name__ == "__main__":
     arguments = parse_args()
     download(
         arguments.subset.expanduser().resolve(),
-        arguments.output_dir.expanduser().resolve(),
+        arguments.assets_root.expanduser().resolve(),
         arguments.repo_id,
         arguments.path_template,
         arguments.workers,

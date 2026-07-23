@@ -2,15 +2,15 @@
 defaults:
   - /data/preprocessing/lighting: polyhaven_source_v0
   - /data/preprocessing/rendering: blender_cycles_512
-  - /data/preprocessing/views: orbit_1
+  - /data/preprocessing/views: orbit_6
   - _self_
 
 source:
-  name: texverse
+  name: polyhaven
   root: data/assets
-  asset_template: texverse/{object_id}.glb
+  asset_template: polyhaven/{object_id}.glb
 
-subset_file: configs/data/subsets/texverse_pbr_64.yaml
+subset_file: configs/data/subsets/polyhaven_pbr_64.yaml
 output_root: data/2d_eval/${source.name}
 blender_log_dir: ${output_root}/logs
 object_ids: null

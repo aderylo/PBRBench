@@ -1,0 +1,75 @@
+# Curated 64-object DTC pilot subset spanning homeware, food, tools, toys,
+# electronics, sports, toiletries, and decorative objects. URLs are not stored
+# here because DTC's post-licence URL manifest is temporary; resolve this ID
+# list against a fresh manifest with src/data/preprocessing/dtc/download.py.
+selection:
+  source: Digital Twin Catalog (DTC) 1.1
+  candidate_count: 1999
+  asset_key: 3d-asset_glb
+  method: manual semantic diversity curation
+
+objects:
+  - id: Advil
+  - id: AirDuster
+  - id: Airplane_B01178HTKM_Yellow
+  - id: Ariel
+  - id: Axe_B0BSCG4XZ5_BrownWoodHandle
+  - id: Baking_D58B1ECE_Powder
+  - id: Bathroom_I1_50281856_BambooBox
+  - id: BasketPlasticRectangular
+  - id: Basketball_B0009KF59W_Brown
+  - id: BirdHouse_A79823645_BearWithLogStump
+  - id: Blistex
+  - id: Block_B007GE75HY_RedBlue
+  - id: Book_0262035618_DeepLearning_2
+  - id: Bottle_Toy_SqueezeFancyTomatoKetchup_C1F9906C
+  - id: Bowl_B07WG43L2D_Blue_TU
+  - id: Box_Toy_465EFA08_FarmFreshButter
+  - id: Calculator_B003822IRA_BrushedNickel_1
+  - id: Can_Toy_B00146LV5C_ChickenNoodleSoup
+  - id: Candle_B07HHXZ2G3_GreenCabbage1
+  - id: Car_38330969_Toy
+  - id: Carton_Toy_0E9D95Af_OrangeJuice_1
+  - id: CashierCounterStand
+  - id: Charging_Station
+  - id: Clorox
+  - id: Container_Toy_GratedParmesanCheese_C87B6E98
+  - id: Cup_B094NQH2YM_BlackGold
+  - id: Cutting_Board_B0006LMVSM_Large
+  - id: Dish_B07ZK7JG6D_Blue
+  - id: Dumbbell_B0045HLAMQ_Blue
+  - id: Dutch_Oven_B00I0NP12M_Palm
+  - id: FakeFruit_1028_Pineapple_1
+  - id: Figurine_B018RVBJLW_Bull
+  - id: Flask
+  - id: Football_B001CEMIXK_Brown
+  - id: Gargoyle_B000CCOMBY_Griffin
+  - id: Gravestone_B000Q7Q1RI_HoodedSkeleton
+  - id: Hammer_B00018ADXA_Wood
+  - id: Handsoap
+  - id: Hawaiian_Tropic
+  - id: Key_B00XZ9O69E_Transponder
+  - id: Keyboard_B092CHWH1D_SilverBlack
+  - id: Knife_B001U4Y4UM_WhiteUtility
+  - id: Mallard_B00CJG52RE_DarkBrown
+  - id: Marker_B00006IFIA_Purple_TU
+  - id: Mortar
+  - id: Mouse_B016QCPNUW_BlackTrackball
+  - id: Neosporin
+  - id: Office_Eraser_04F879CB_GreyWhiteDryEraser
+  - id: Pan_B00I2ZILEW_Skillet
+  - id: Planter_B0C4G81ZPF_Cat
+  - id: Pistol_B0BGXFY3K1_OrangeGrey_2
+  - id: Pottery_B075SX9GVK_White
+  - id: Remote
+  - id: Salt_B0C42X8CDT_DarkBlue
+  - id: Shampoo_B000H0Y4NW_PaulMitchell
+  - id: Shaver_B08K8ZYH8P_BlackSilver
+  - id: Shoe_A76726869_WhiteSize8_2_TU
+  - id: Spatula_B0CXJ6L8V1_NewAdventure
+  - id: Speaker_B005LW42MY_BlackOrange
+  - id: Spoon_B0013NB70A_Blue
+  - id: TeaPot_B01252SB56_AirBalloonMotif_TU
+  - id: Vase_B002MH255W_White
+  - id: Volleyball_B01B7VJ0UQ_StainedGlass
+  - id: WoodBlocks_B00FIX22YQ_BlueArch

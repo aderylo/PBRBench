@@ -190,19 +190,20 @@ def render_binary_mask(path: Path, threshold: float = 0.5) -> int:
     scene.render.image_settings.color_mode = "BW"
     scene.render.image_settings.color_depth = "8"
     scene.view_settings.view_transform = "Raw"
-    bpy.ops.render.render()
+    scene.render.filepath = str(path)
+    bpy.ops.render.render(write_still=True)
 
-    image = bpy.data.images["Render Result"]
+    image = bpy.data.images.load(str(path), check_existing=False)
     pixels = list(image.pixels[:])
     foreground_pixels = 0
     for offset in range(0, len(pixels), 4):
         foreground = pixels[offset] >= threshold
         value = 1.0 if foreground else 0.0
         pixels[offset : offset + 3] = (value, value, value)
-        pixels[offset + 3] = 1.0
         foreground_pixels += int(foreground)
     image.pixels[:] = pixels
     image.save_render(str(path), scene=scene)
+    bpy.data.images.remove(image)
     return foreground_pixels
 
 
@@ -328,6 +329,41 @@ def emission_material(
     return material
 
 
+def assign_material(meshes: list[bpy.types.Object], material: bpy.types.Material) -> None:
+    """Assign one diagnostic material to every mesh slot.
+
+    Blender 3.4 does not reliably apply ``ViewLayer.material_override`` to the
+    imported glTF materials in background EEVEE renders. In that case the
+    preceding metallic shader remains active, making the normal, depth, and
+    mask outputs copies of the metallic channel. Assigning the diagnostic
+    material to the actual slots is deterministic across EEVEE and Cycles.
+    """
+    for mesh in meshes:
+        if not mesh.material_slots:
+            mesh.data.materials.append(material)
+            continue
+        for slot in mesh.material_slots:
+            slot.material = material
+
+
+def material_slots(meshes: list[bpy.types.Object]):
+    """Return each distinct mesh datablock and its current material slots."""
+    result = []
+    seen = set()
+    for mesh in meshes:
+        if mesh.data.name_full not in seen:
+            result.append((mesh.data, list(mesh.data.materials)))
+            seen.add(mesh.data.name_full)
+    return result
+
+
+def restore_materials(saved_materials) -> None:
+    for mesh_data, materials in saved_materials:
+        mesh_data.materials.clear()
+        for material in materials:
+            mesh_data.materials.append(material)
+
+
 def depth_range(
     camera: bpy.types.Object, meshes: list[bpy.types.Object]
 ) -> tuple[float, float]:
@@ -363,22 +399,21 @@ def render_reference_passes(
         )
 
     near, far = depth_range(camera, meshes)
+    saved_materials = material_slots(meshes)
     for channel, material, mode, bits in (
         ("normal", emission_material("BenchmarkNormal", "normal"), "RGB", "16"),
         ("depth", emission_material("BenchmarkDepth", "depth", near, far), "BW", "16"),
     ):
-        bpy.context.view_layer.material_override = material
+        assign_material(meshes, material)
         render_png(
             view_dir / f"{channel}.png",
             color_mode=mode,
             color_depth=bits,
             transform="Raw",
         )
-    bpy.context.view_layer.material_override = emission_material(
-        "BenchmarkMask", "mask"
-    )
+    assign_material(meshes, emission_material("BenchmarkMask", "mask"))
     foreground_pixels = render_binary_mask(view_dir / "mask.png")
-    bpy.context.view_layer.material_override = None
+    restore_materials(saved_materials)
     if foreground_pixels < min_foreground_pixels:
         raise RuntimeError(
             f"Invalid mask: {foreground_pixels} foreground pixels, expected at least "

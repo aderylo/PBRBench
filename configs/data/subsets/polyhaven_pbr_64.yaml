@@ -1,0 +1,73 @@
+# The 64 Poly Haven models selected for material and shape diversity. The
+# downloader queries the current public API, verifies the glTF bundle, and
+# embeds it in data/assets/polyhaven/<id>.glb; no temporary URLs are stored.
+selection:
+  source: Poly Haven
+  asset_format: glb
+  resolution: 1k
+
+objects:
+  - id: portable_generator
+  - id: industrial_microscope
+  - id: adjustable_wrench
+  - id: handsaw_wood
+  - id: metal_tool_chest
+  - id: vintage_day_bed
+  - id: metal_stool_01
+  - id: binoculars
+  - id: vintage_flashlight
+  - id: pastic_torch_6v
+  - id: Drill_01
+  - id: Television_01
+  - id: Lantern_01
+  - id: brass_vase_03
+  - id: cannon_01
+  - id: wooden_crate_02
+  - id: rusted_spade_01
+  - id: garden_gloves_01
+  - id: seeding_tray_01
+  - id: garden_hose_wall_mounted_01
+  - id: planter_box_01
+  - id: vintage_microwave
+  - id: mid_century_lounge_chair
+  - id: jacaranda_tree
+  - id: marble_bust_01
+  - id: seadogs_compass
+  - id: dead_tree_trunk_02
+  - id: lemon
+  - id: tree_small_02
+  - id: cement_bag
+  - id: industrial_wall_lamp
+  - id: industrial_pipe_lamp
+  - id: cleaner_tin_01
+  - id: bleach_bottle
+  - id: dustpan
+  - id: gaming_console
+  - id: wicker_basket_02
+  - id: antique_ceramic_vase_01
+  - id: throw_pillows_01
+  - id: fishermans_hat
+  - id: vintage_lighter
+  - id: old_tyre
+  - id: croissant
+  - id: yellow_onion
+  - id: stone_01
+  - id: rock_09
+  - id: grass_bermuda_01
+  - id: potted_plant_04
+  - id: circuit_board
+  - id: lightbulb_led
+  - id: wooden_candlestick
+  - id: dartboard
+  - id: wall_clock
+  - id: carved_wooden_elephant
+  - id: flathead_screwdriver
+  - id: horse_statue_01
+  - id: potted_plant_01
+  - id: boombox
+  - id: security_camera_01
+  - id: Megaphone_01
+  - id: pliers
+  - id: CashRegister_01
+  - id: Camera_01
+  - id: cigarette_pack

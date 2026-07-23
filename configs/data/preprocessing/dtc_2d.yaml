@@ -6,11 +6,11 @@ defaults:
   - _self_
 
 source:
-  name: texverse
+  name: dtc
   root: data/assets
-  asset_template: texverse/{object_id}.glb
+  asset_template: dtc/{object_id}.glb
 
-subset_file: configs/data/subsets/texverse_pbr_64.yaml
+subset_file: configs/data/subsets/dtc_pbr_64.yaml
 output_root: data/2d_eval/${source.name}
 blender_log_dir: ${output_root}/logs
 object_ids: null

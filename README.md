@@ -95,9 +95,36 @@ uv run python scripts/download_polyhaven_envmaps.py \
 # Download only the curated 64-object Objaverse PBR subset
 uv run python src/data/preprocessing/objaverse/download.py
 
+# Download the curated TexVerse PBR subset
+uv run python src/data/preprocessing/texverse/download.py
+
+# Download the DTC pilot subset. Fetch a fresh, temporary URL manifest from the
+# DTC site after accepting its licence; do not commit that manifest.
+uv run python src/data/preprocessing/dtc/download.py \
+  --download-urls-json data/DTC_objects_all_download_urls.json
+
+# Download the curated Poly Haven models. Every downloader writes one
+# self-contained GLB per object under data/assets/<source>/<object_id>.glb.
+uv run python src/data/preprocessing/polyhaven/download.py
+
+# All source downloaders use this layout:
+# data/assets/<source>/<object_id>.glb
+
 # Render both TexVerse representations (run `module load blender` on the cluster)
 uv run python src/data/preprocessing/render_views_2d.py
 uv run python src/data/preprocessing/render_views_3d.py
+
+# Use the same renderers for the downloaded DTC assets
+uv run python src/data/preprocessing/render_views_2d.py \
+  --config-name data/preprocessing/dtc_2d
+uv run python src/data/preprocessing/render_views_3d.py \
+  --config-name data/preprocessing/dtc_3d
+
+# Render the downloaded Poly Haven model subset
+uv run python src/data/preprocessing/render_views_2d.py \
+  --config-name data/preprocessing/polyhaven_2d
+uv run python src/data/preprocessing/render_views_3d.py \
+  --config-name data/preprocessing/polyhaven_3d
 
 # Create a cached, uv-managed environment for the selected method (once)
 uv run python scripts/deps/neural_lightrig.py
