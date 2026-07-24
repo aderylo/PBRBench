@@ -1,0 +1,85 @@
+name: pbr_oracle
+_target_: src.methods_2d.pbr_oracle.PBROracle2D
+repo_root: third_party/pbr_oracle
+
+# Render an expanded controlled-light sequence with the authored PBR material.
+# This backend remains replaceable by a learned relighting oracle later.
+relighting_oracle:
+  backend: blender
+  blender: blender
+  samples_per_pixel: 32
+  denoise: true
+  device: cuda
+  overwrite: false
+
+# Blender reproduces the same asset/view/environment with a neutral 18%
+# Lambertian material while preserving authored normal and alpha inputs.
+shading_oracle:
+  blender: blender
+  samples_per_pixel: 32
+  denoise: true
+  device: cuda
+  overwrite: false
+
+lights:
+  - id: ferndale_studio_11_r000
+    path: data/envmaps/ferndale_studio_11_1k.exr
+    rotation_deg: 0.0
+    strength: 0.5
+  - id: ferndale_studio_11_r120
+    path: data/envmaps/ferndale_studio_11_1k.exr
+    rotation_deg: 120.0
+    strength: 0.5
+  - id: ferndale_studio_11_r240
+    path: data/envmaps/ferndale_studio_11_1k.exr
+    rotation_deg: 240.0
+    strength: 0.5
+  - id: newman_cafeteria_r000
+    path: data/envmaps/newman_cafeteria_1k.exr
+    rotation_deg: 0.0
+    strength: 0.5
+  - id: newman_cafeteria_r120
+    path: data/envmaps/newman_cafeteria_1k.exr
+    rotation_deg: 120.0
+    strength: 0.5
+  - id: newman_cafeteria_r240
+    path: data/envmaps/newman_cafeteria_1k.exr
+    rotation_deg: 240.0
+    strength: 0.5
+  - id: suburban_garden_r000
+    path: data/envmaps/suburban_garden_1k.exr
+    rotation_deg: 0.0
+    strength: 0.5
+  - id: suburban_garden_r120
+    path: data/envmaps/suburban_garden_1k.exr
+    rotation_deg: 120.0
+    strength: 0.5
+  - id: suburban_garden_r240
+    path: data/envmaps/suburban_garden_1k.exr
+    rotation_deg: 240.0
+    strength: 0.5
+  - id: cobblestone_parish_road_r000
+    path: data/envmaps/cobblestone_parish_road_1k.exr
+    rotation_deg: 0.0
+    strength: 0.5
+  - id: cobblestone_parish_road_r120
+    path: data/envmaps/cobblestone_parish_road_1k.exr
+    rotation_deg: 120.0
+    strength: 0.5
+  - id: cobblestone_parish_road_r240
+    path: data/envmaps/cobblestone_parish_road_1k.exr
+    rotation_deg: 240.0
+    strength: 0.5
+
+proxy_reflectance: 0.18
+# Soft inverse-variance transport weighting. Values near LDR clipping retain
+# minimum_clipping_weight instead of being removed.
+energy_floor: 0.003
+clipping_start: 0.90
+minimum_clipping_weight: 0.02
+max_ratio: 8.0
+log_epsilon: 1.0e-4
+
+# Required benchmark channels; only albedo is a meaningful estimate in v0.
+dummy_roughness: 0.5
+dummy_metallic: 0.0

@@ -137,7 +137,7 @@ third_party/.venvs/neural_lightrig/bin/python src/infer_pbr_2d.py \
 
 # Physics-only diffuse albedo from expanded Blender relightings and proxies
 # (run `module load blender` first)
-uv run python src/infer_pbr_2d.py method_2d=switchlight
+uv run python src/infer_pbr_2d.py method_2d=pbr_oracle
 
 # Restrict a development run without changing the prepared dataset
 third_party/.venvs/supermat/bin/python src/infer_pbr_2d.py \
