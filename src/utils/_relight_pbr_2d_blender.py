@@ -158,6 +158,7 @@ def main() -> None:
             for prediction in view["predictions"]:
                 assign_material(meshes, prediction["channels"])
                 render_targets(targets, prediction["outputs"])
+                print(f"PROGRESS {prediction['sample_id']}", flush=True)
 
 
 if __name__ == "__main__":

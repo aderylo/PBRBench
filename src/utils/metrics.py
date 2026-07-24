@@ -132,3 +132,34 @@ def mean_metrics(items: Iterable[dict[str, Any]]) -> dict[str, Any]:
         else:
             result[key] = float(np.mean(values))
     return result
+
+
+def metric_statistics(items: Iterable[dict[str, Any]]) -> dict[str, Any]:
+    """Recursively summarize scalar metrics across evaluated samples.
+
+    Variance and standard deviation use the population definition (``ddof=0``),
+    because the evaluated samples represent the complete selected evaluation
+    split rather than a statistical sample of a larger set.
+    """
+    items = list(items)
+    if not items:
+        return {}
+    keys = items[0].keys()
+    result: dict[str, Any] = {}
+    for key in keys:
+        values = [item[key] for item in items]
+        if isinstance(values[0], dict):
+            result[key] = metric_statistics(values)
+            continue
+
+        array = np.asarray(values, dtype=np.float64)
+        result[key] = {
+            "count": int(array.size),
+            "mean": float(np.mean(array)),
+            "variance": float(np.var(array)),
+            "stddev": float(np.std(array)),
+            "min": float(np.min(array)),
+            "median": float(np.median(array)),
+            "max": float(np.max(array)),
+        }
+    return result

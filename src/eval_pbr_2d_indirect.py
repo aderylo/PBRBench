@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import json
 import subprocess
 import tempfile
@@ -13,7 +14,7 @@ import hydra
 import rootutils
 from hydra.utils import instantiate
 from omegaconf import DictConfig, OmegaConf
-
+from tqdm.auto import tqdm
 PROJECT_ROOT = rootutils.setup_root(
     __file__, indicator=".project_root", pythonpath=True
 )
@@ -22,8 +23,10 @@ from src.data.pbr_estimation_dataset_2d import (  # noqa: E402
     PBREstimationDataset2D,
     PBREstimationSample2D,
 )
-from src.data.preprocessing.utils import load_subset, resolve_lights  # noqa: E402
+from src.data.preprocessing.utils import resolve_lights  # noqa: E402
 from src.utils import get_pylogger  # noqa: E402
+
+log = get_pylogger(__name__)
 from src.utils.eval import (  # noqa: E402
     CHANNELS,
     load_alpha,
@@ -55,7 +58,7 @@ class IndirectEvaluationCounts:
 
 @dataclass(frozen=True)
 class IndirectSampleResult:
-    """Relighting metrics and identifying metadata for one registered sample."""
+    """Indirect metrics and identifying metadata for one registered sample."""
 
     object_id: str
     view_id: str
@@ -73,7 +76,6 @@ class IndirectEvaluationPayload:
     predictions_dir: str
     dataset_name: str
     dataset_root: str
-    subset_file: str | None
     target_envmaps: list[str]
     counts: IndirectEvaluationCounts
     aggregate: dict[str, float]
@@ -222,8 +224,6 @@ def evaluate(config: DictConfig) -> IndirectEvaluationPayload:
     dataset_overrides = {}
     if hasattr(config.data, "root") and config.data.root:
         dataset_overrides["root"] = project_path(config.data.root)
-    if config.get("subset_file"):
-        dataset_overrides["object_ids"] = load_subset(project_path(config.subset_file))
     log.info("Instantiating dataset <%s>", config.data._target_)
     dataset: PBREstimationDataset2D = instantiate(config.data, **dataset_overrides)
     samples = list(dataset)
@@ -234,26 +234,57 @@ def evaluate(config: DictConfig) -> IndirectEvaluationPayload:
         len(samples),
     )
 
-    with tempfile.TemporaryDirectory(prefix="pbr_eval_relight_") as temp:
-        temporary_dir = Path(temp)
-        job, state = build_job(config, samples, predictions, temporary_dir)
+    should_save_renders = bool(config.get("save_rerenders"))
+    if should_save_renders:
+        renders_dir = predictions_dir.parent / "rerenders"
+        renders_dir.mkdir(parents=True, exist_ok=True)
+        cm = contextlib.nullcontext(renders_dir)
+        log.info("Saving rerenders to %s", renders_dir)
+    else:
+        renders_dir = None
+        cm = tempfile.TemporaryDirectory(prefix="pbr_eval_relight_")
+
+    with cm as target_dir_raw:
+        working_dir = Path(target_dir_raw)
+        job, state = build_job(config, samples, predictions, working_dir)
         log.info("Relighting %d valid prediction samples", len(state.score_paths))
         if job["objects"]:
-            job_path = temporary_dir / "job.json"
+            job_path = working_dir / "job.json"
             job_path.write_text(json.dumps(job, indent=2))
             helper = Path(__file__).parent / "utils" / "_relight_pbr_2d_blender.py"
-            subprocess.run(
-                [
-                    str(config.rendering.executable),
-                    "--background",
-                    "--python",
-                    str(helper),
-                    "--",
-                    "--job",
-                    str(job_path),
-                ],
-                check=True,
-            )
+            blender_log_path = predictions_dir.parent / "blender_relight.log"
+            log.info("Blender log saved to %s", blender_log_path)
+
+            cmd = [
+                str(config.rendering.executable),
+                "--background",
+                "--python",
+                str(helper),
+                "--",
+                "--job",
+                str(job_path),
+            ]
+            with open(blender_log_path, "w") as log_file:
+                process = subprocess.Popen(
+                    cmd,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                    bufsize=1,
+                )
+                with tqdm(
+                    total=len(state.score_paths),
+                    desc="Indirect PBR relighting (Blender)",
+                    unit="sample",
+                ) as pbar:
+                    if process.stdout:
+                        for line in process.stdout:
+                            log_file.write(line)
+                            if line.startswith("PROGRESS "):
+                                pbar.update(1)
+                return_code = process.wait()
+                if return_code != 0:
+                    raise subprocess.CalledProcessError(return_code, cmd)
 
         lpips_metric = LPIPSMetric(
             str(config.device),
@@ -293,7 +324,6 @@ def evaluate(config: DictConfig) -> IndirectEvaluationPayload:
         predictions_dir=str(predictions_dir),
         dataset_name=dataset.name,
         dataset_root=str(dataset.root),
-        subset_file=str(config.subset_file) if config.get("subset_file") else None,
         target_envmaps=[target["id"] for target in job["targets"]],
         counts=IndirectEvaluationCounts(
             requested=len(samples),

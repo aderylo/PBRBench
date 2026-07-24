@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -9,6 +10,7 @@ import hydra
 import rootutils
 from hydra.utils import instantiate
 from omegaconf import DictConfig
+from tqdm.auto import tqdm
 
 PROJECT_ROOT = rootutils.setup_root(
     __file__, indicator=".project_root", pythonpath=True
@@ -28,7 +30,11 @@ from src.utils.eval import (  # noqa: E402
     srgb_to_linear,
     write_yaml,
 )
-from src.utils.metrics import masked_rmse_psnr, mean_metrics  # noqa: E402
+from src.utils.metrics import (  # noqa: E402
+    masked_rmse_psnr,
+    mean_metrics,
+    metric_statistics,
+)
 
 log = get_pylogger(__name__)
 
@@ -56,6 +62,15 @@ class DirectSampleResult:
 
 
 @dataclass(frozen=True)
+class DirectMetricSummary:
+    """Mean metrics and descriptive statistics for one evaluated group."""
+
+    evaluated: int
+    aggregate: dict[str, dict[str, float]]
+    statistics: dict[str, dict[str, dict[str, float | int]]]
+
+
+@dataclass(frozen=True)
 class DirectEvaluationPayload:
     """Complete, YAML-serializable result of a direct PBR evaluation run."""
 
@@ -65,6 +80,8 @@ class DirectEvaluationPayload:
     dataset_root: str
     counts: EvaluationCounts
     aggregate: dict[str, dict[str, float]]
+    statistics: dict[str, dict[str, dict[str, float | int]]]
+    per_source: dict[str, DirectMetricSummary]
     samples: dict[str, DirectSampleResult]
     failures: dict[str, str]
 
@@ -104,6 +121,18 @@ def evaluate_single_sample(
     return metrics
 
 
+def summarize_results(
+    results: list[DirectSampleResult],
+) -> DirectMetricSummary:
+    """Aggregate mean and spread metrics for a set of evaluated samples."""
+    sample_metrics = [result.metrics for result in results]
+    return DirectMetricSummary(
+        evaluated=len(results),
+        aggregate=mean_metrics(sample_metrics),
+        statistics=metric_statistics(sample_metrics),
+    )
+
+
 def evaluate(config: DictConfig) -> DirectEvaluationPayload:
     """Evaluate prediction artifacts registered in the configured 2D dataset."""
     predictions_dir = project_path(config.predictions_dir)
@@ -123,7 +152,9 @@ def evaluate(config: DictConfig) -> DirectEvaluationPayload:
 
     results: dict[str, DirectSampleResult] = {}
     failures: dict[str, str] = {}
-    for sample_id in sorted(predictions):
+    for sample_id in tqdm(
+        sorted(predictions), desc="Direct PBR evaluation", unit="sample"
+    ):
         sample = samples.get(sample_id)
         if sample is None:
             failures[sample_id] = "Prediction directory is not registered in the dataset"
@@ -138,7 +169,6 @@ def evaluate(config: DictConfig) -> DirectEvaluationPayload:
                 metrics=metrics,
                 source=sample.source,
             )
-            log.info("Evaluated %s", sample_id)
         except (FileNotFoundError, ValueError) as error:
             failures[sample_id] = str(error)
 
@@ -146,6 +176,15 @@ def evaluate(config: DictConfig) -> DirectEvaluationPayload:
         failures[sample_id] = (
             "Prediction directory missing: " f"{predictions_dir / sample_id}"
         )
+
+    overall = summarize_results(list(results.values()))
+    grouped_results: dict[str, list[DirectSampleResult]] = defaultdict(list)
+    for result in results.values():
+        grouped_results[result.source or "unknown"].append(result)
+    per_source = {
+        source: summarize_results(source_results)
+        for source, source_results in sorted(grouped_results.items())
+    }
 
     payload = DirectEvaluationPayload(
         evaluation="pbr_2d_direct",
@@ -161,7 +200,10 @@ def evaluate(config: DictConfig) -> DirectEvaluationPayload:
             evaluated=len(results),
             failed=len(failures),
         ),
-        aggregate=mean_metrics(result.metrics for result in results.values()),
+        # Retain this mean-only field for compatibility with existing reports.
+        aggregate=overall.aggregate,
+        statistics=overall.statistics,
+        per_source=per_source,
         samples=results,
         failures=failures,
     )
