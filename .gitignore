@@ -11,6 +11,7 @@ __pycache__/
 
 # Output / Logs / Experiments
 outputs/
+logs/
 *.log
 
 # Raw assets and generated benchmark data

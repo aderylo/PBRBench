@@ -148,10 +148,9 @@ uv run python src/eval_pbr_2d_direct.py \
   predictions_dir=outputs/pbr_2d/supermat/predictions
 
 # Relight predicted and reference maps in Blender, then compare the renders
-# (run `module load blender` on the cluster)
+# (run `module load blender/3.4.1` on the cluster)
 uv run python src/eval_pbr_2d_indirect.py \
-  predictions_dir=outputs/pbr_2d/supermat/predictions \
-  'target_envmaps=[newman_cafeteria,suburban_garden]'
+  predictions_dir=outputs/pbr_2d/supermat/predictions
 ```
 
 Each inference run stores canonical predictions and its resolved configuration in

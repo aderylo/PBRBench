@@ -1,5 +1,5 @@
 defaults:
-  - data: texverse_2d
+  - data: all_2d
   - _self_
 
 # This is the `predictions` directory written by `infer_pbr_2d.py`.  Its
