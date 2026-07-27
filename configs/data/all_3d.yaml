@@ -1,0 +1,11 @@
+name: all_3d
+_target_: src.data.pbr_estimation_dataset_3d.MultiSourcePBREstimationDataset3D
+sources:
+  dtc: data/3d_eval/dtc
+  texverse: data/3d_eval/texverse
+  objaverse: data/3d_eval/objaverse
+  polyhaven: data/3d_eval/polyhaven
+object_ids: null
+texture_ids: null
+max_samples: null
+validate_files: true
