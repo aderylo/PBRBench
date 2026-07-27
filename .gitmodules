@@ -13,3 +13,9 @@
 [submodule "third_party/pbr_oracle"]
 	path = third_party/pbr_oracle
 	url = git@github.com:aderylo/pbr-oracle.git
+[submodule "third_party/IntrinsicAnything"]
+	path = third_party/IntrinsicAnything
+	url = https://github.com/zju3dv/IntrinsicAnything.git
+[submodule "third_party/TRELLIS.2"]
+	path = third_party/TRELLIS.2
+	url = https://github.com/microsoft/TRELLIS.2.git

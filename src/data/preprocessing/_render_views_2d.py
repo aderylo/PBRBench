@@ -386,6 +386,8 @@ def render_reference_passes(
     scene = bpy.context.scene
     scene.render.engine = "BLENDER_EEVEE"
     materials = all_materials(meshes)
+    for material in materials:
+        material.blend_method = "OPAQUE"
     for channel in ("albedo", "roughness", "metallic"):
         for material in materials:
             set_material_channel(material, channel)
