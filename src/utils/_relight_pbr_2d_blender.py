@@ -136,8 +136,11 @@ def render_targets(targets: list[LightSpec], outputs: dict[str, str]) -> None:
         output = outputs.get(target.id)
         if output is None:
             continue
+        output_path = Path(output)
+        if output_path.exists() and output_path.stat().st_size > 0:
+            continue
         setup_environment(target)
-        render_png(Path(output), transform="Standard")
+        render_png(output_path, transform="Standard")
 
 
 def main() -> None:

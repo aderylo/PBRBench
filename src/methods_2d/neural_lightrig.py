@@ -110,6 +110,7 @@ class NeuralLightRig2D(BaseMaterialEstimator2D):
         def load_community_unclip(repo_id, *args, **kwargs):
             if repo_id == "stabilityai/stable-diffusion-2-1-unclip":
                 repo_id = self.unclip_model
+            kwargs["local_files_only"] = True
             return load_vision_model(repo_id, *args, **kwargs)
 
         with patch.object(
