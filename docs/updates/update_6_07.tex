@@ -1,0 +1,400 @@
+\documentclass[11pt]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[margin=2.2cm]{geometry}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{microtype}
+\usepackage{xcolor}
+\usepackage{hyperref}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=black,
+  urlcolor=blue!60!black
+}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.65em}
+\renewcommand{\arraystretch}{1.15}
+
+\definecolor{promptbg}{RGB}{245,246,248}
+\definecolor{rulegray}{RGB}{210,213,218}
+
+\newcommand{\assetroot}{../data/objaverse_eval/0bf9c0d7fd69472e8fb192e0a784b165}
+\newcommand{\promptprefix}{\texttt{refcontrol}, preserve the reference object's
+  identity, geometry, surface materials, textures, markings, and colors. Change
+  only the illumination.}
+
+\newcommand{\promptbox}[1]{%
+  \begingroup
+  \setlength{\fboxsep}{8pt}%
+  \noindent\colorbox{promptbg}{%
+    \parbox{\dimexpr\linewidth-2\fboxsep\relax}{%
+      \small\textbf{Prompt}\quad \promptprefix\ #1}}
+  \endgroup
+}
+
+\newcommand{\promptheader}[1]{%
+  \begin{minipage}[b]{0.255\textwidth}
+    \scriptsize\raggedright
+    \promptprefix\ #1\par
+  \end{minipage}%
+}
+
+\begin{document}
+
+\begin{center}
+  {\LARGE\bfseries Progress Update for Week 6.07--12.07}
+\end{center}
+
+\section{Multi-Illumination Images}
+
+We generate images of the same object under different lighting conditions with
+the \href{https://huggingface.co/thedeoxen/refcontrol-FLUX.2-klein-9B-reference-normal-lora}{RefControl FLUX.2 Klein 9B Reference--Normal LoRA}.
+For a fixed camera view, the model receives both a rendered normal map and a
+high-resolution RGB reference. The normal map constrains the geometry and
+surface orientation, while the RGB image provides the object's materials,
+textures, markings, and colours. A text prompt then specifies the desired
+illumination. Only the lighting clause is changed between generations.
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tabular}{@{}c@{\hspace{0.7em}}c@{\hspace{0.7em}}c@{\hspace{0.7em}}c@{\hspace{0.7em}}c@{}}
+    \includegraphics[width=0.275\textwidth]{\assetroot/renders/view_002/normals.png} &
+    {\Large$+$} &
+    \includegraphics[width=0.275\textwidth]{\assetroot/renders/view_002/rgb.png} &
+    {\Large$\longrightarrow$} &
+    \includegraphics[width=0.275\textwidth]{\assetroot/relightings/view_002/point_left.png}
+    \\
+    \textbf{Normal map} && \textbf{RGB reference} && \textbf{Relit image}
+  \end{tabular}
+  \vspace{0.7em}
+
+  \promptbox{Single point light from the left, positioned outside the camera
+  frame; no visible light source or light beam}
+
+  \caption{Relighting workflow for a single camera view. The normal map and RGB
+  reference are taken from the same view; the shown prompt produces the
+  corresponding left-lit output.}
+  \label{fig:relighting-workflow}
+\end{figure}
+
+Using a high-resolution RGB reference is important for appearance consistency.
+When fine texture details are not sufficiently resolved, the underlying
+generative model can reinterpret them independently in each output. In this
+example, this can include changing the colour of the small blue accent dots on
+the object. We therefore generate from $1024\times1024$ RGB and normal-map
+inputs, always paired from the same camera view.
+
+\subsection{Examples}
+
+Figure~\ref{fig:relighting-examples} compares three illumination prompts at
+camera yaw angles of $-30^\circ$, $0^\circ$, and $+30^\circ$ (all rendered at a
+fixed $20^\circ$ elevation). Each column uses the prompt printed above it, while
+each row shows a different view of the object. This layout makes it possible to
+inspect whether a requested illumination remains consistent as the camera moves
+around the object.
+
+\begin{figure}[p]
+  \centering
+  \begin{tabular}{@{}r@{\hspace{0.7em}}c@{\hspace{0.55em}}c@{\hspace{0.55em}}c@{}}
+    &
+    \promptheader
+      {Single point light from the left, positioned outside the camera frame;
+       no visible light source or light beam}
+    &
+    \promptheader
+      {Single point light from above, positioned outside the camera frame; no
+       visible light source or light beam}
+    &
+    \promptheader
+      {Large soft light from the right, positioned outside the camera frame; no
+       visible light source or light beam}
+    \\[0.7em]
+    \textbf{View 0} ($-30^\circ$) &
+    \includegraphics[width=0.255\textwidth]{\assetroot/relightings/view_000/point_left.png} &
+    \includegraphics[width=0.255\textwidth]{\assetroot/relightings/view_000/point_top.png} &
+    \includegraphics[width=0.255\textwidth]{\assetroot/relightings/view_000/soft_right.png}
+    \\[0.55em]
+    \textbf{View 2} ($0^\circ$) &
+    \includegraphics[width=0.255\textwidth]{\assetroot/relightings/view_002/point_left.png} &
+    \includegraphics[width=0.255\textwidth]{\assetroot/relightings/view_002/point_top.png} &
+    \includegraphics[width=0.255\textwidth]{\assetroot/relightings/view_002/soft_right.png}
+    \\[0.55em]
+    \textbf{View 4} ($+30^\circ$) &
+    \includegraphics[width=0.255\textwidth]{\assetroot/relightings/view_004/point_left.png} &
+    \includegraphics[width=0.255\textwidth]{\assetroot/relightings/view_004/point_top.png} &
+    \includegraphics[width=0.255\textwidth]{\assetroot/relightings/view_004/soft_right.png}
+  \end{tabular}
+  \caption{Three illumination conditions generated independently at camera yaw
+  angles of $-30^\circ$, $0^\circ$, and $+30^\circ$. Rows correspond to camera
+  views and columns to prompts.}
+  \label{fig:relighting-examples}
+\end{figure}
+
+\clearpage
+\section{Albedo Estimation}
+
+An observed image mixes properties of the surface with the illumination under
+which it was captured. Following the intrinsic-image terminology introduced by
+\href{https://people.csail.mit.edu/torralba/courses/6.870/papers/Barrow-Tenenbaum78.pdf}{Barrow and Tenenbaum (1978)}, we model an image as the element-wise
+product
+\begin{equation}
+  I_t(x,y) = L_t(x,y) \odot R(x,y),
+  \label{eq:intrinsic-image}
+\end{equation}
+where $L_t$ is the illumination or shading at time $t$ and $R$ is the
+reflectance (albedo). Albedo describes the colour attributable to the surface
+itself and should remain invariant when only the illumination changes.
+
+In \emph{2D albedo estimation}, the camera and object are fixed and only the
+illumination varies. The task is to recover the single reflectance image shared
+by the sequence, matching the problem posed by
+\href{https://people.eecs.berkeley.edu/~efros/courses/AP06/Papers/weiss-iccv-01.pdf}{Weiss (2001)}. In \emph{3D albedo estimation}, observations may come from both
+different illuminations and different camera views. The goal is then one
+surface-aligned reflectance texture that is consistent wherever the same 3D
+point is visible, as in
+\href{https://people.csail.mit.edu/sparis/publi/2012/sigasia_intrinsic/Laffont_12_Coherent_Intrinsic_Images.pdf}{\emph{Coherent Intrinsic Images from Photo Collections}}.
+
+\subsection{Naive Marginalisation}
+
+Since reflectance is constant across the relit sequence, a simple baseline is
+to marginalise over illumination by aggregating the observations. For $T$
+registered relightings of one camera view, the two estimates used here are
+\begin{equation}
+  \widehat{R}_{\mathrm{mean}}(x,y)
+    = \frac{1}{T}\sum_{t=1}^{T} I_t(x,y),
+  \qquad
+  \widehat{R}_{\mathrm{median}}(x,y)
+    = \underset{t}{\operatorname{median}}\; I_t(x,y).
+  \label{eq:naive-aggregation}
+\end{equation}
+The operations are applied per pixel and colour channel in linear RGB, after
+masking the background and rejecting saturated observations.
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tabular}{@{}c@{\hspace{0.7em}}c@{\hspace{0.7em}}c@{}}
+    \includegraphics[width=0.30\textwidth]{\assetroot/albedo_2d/naive_mean/view_002/albedo.png} &
+    \includegraphics[width=0.30\textwidth]{\assetroot/albedo_2d/naive_median/view_002/albedo.png} &
+    \includegraphics[width=0.30\textwidth]{\assetroot/renders/view_002/gt_albedo.png}
+    \\
+    \textbf{Mean} & \textbf{Median} & \textbf{Ground truth}
+  \end{tabular}
+  \caption{Naive 2D albedo estimates from 15 relightings of view 2, compared
+  with the ground-truth reflectance.}
+  \label{fig:naive-albedo-2d}
+\end{figure}
+
+The mean and median retain a considerable amount of shading, particularly on
+the barrel and grip, instead of recovering the flatter ground-truth colours.
+With unknown, non-uniform lighting and only 15 samples, the illumination does
+not average to a neutral field; consequently, its bias is baked into both
+albedo estimates.
+
+\subsubsection{Aggregation in 3D}
+
+We also test whether pooling observations across camera views reduces this
+bias. Each render stores, for every visible object pixel, its coordinate in the
+mesh's UV atlas. We convert the relit images to linear RGB, discard invalid and
+saturated pixels, and splat the remaining colours into a shared $1024\times
+1024$ UV texture. A per-texel mean or median is then taken over all valid
+lighting and view observations. For comparison below, the resulting texture is
+reprojected into view 2 using the same UV-coordinate buffer.
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tabular}{@{}c@{\hspace{0.7em}}c@{\hspace{0.7em}}c@{}}
+    \includegraphics[width=0.285\textwidth]{\assetroot/albedo_3d/naive_mean/visualisations/view_002/albedo.png} &
+    \includegraphics[width=0.285\textwidth]{\assetroot/albedo_3d/naive_median/visualisations/view_002/albedo.png} &
+    \includegraphics[width=0.285\textwidth]{\assetroot/renders/view_002/gt_albedo.png}
+    \\
+    \textbf{Mean in UV space} & \textbf{Median in UV space} & \textbf{Ground truth}
+  \end{tabular}
+  \caption{Naive 3D albedo estimates aggregated in a common UV atlas and
+  reprojected into view 2.}
+  \label{fig:naive-albedo-3d}
+\end{figure}
+
+Aggregating in UV space helps to suppress some view-dependent specular
+reflections. Nevertheless, both estimates still contain substantial shading,
+so adding observations from multiple views does not resolve the underlying
+illumination bias.
+
+\subsection{Gradient Space Marginalisation}
+
+The method of
+\href{https://people.eecs.berkeley.edu/~efros/courses/AP06/Papers/weiss-iccv-01.pdf}{Weiss, \emph{Deriving Intrinsic Images from Image Sequences} (2001)}
+performs the marginalisation in gradient space. Taking logarithms turns the
+image formation model into a sum,
+\begin{equation}
+  \log I_t = \log L_t + \log R.
+  \label{eq:log-intrinsic-image}
+\end{equation}
+Spatial gradients caused by illumination are assumed to be sparse and to move
+between differently lit images, whereas gradients at reflectance boundaries
+remain in the same location. We apply horizontal and vertical difference
+filters to each log image and take the temporal median of their responses.
+Under these assumptions, the moving illumination gradients are rejected while
+the persistent reflectance gradients remain. A masked Poisson solve then
+integrates the recovered gradient field into an albedo image.
+
+The same construction can be applied in 3D. We first project every relighting
+from every view into the shared UV atlas, then compute and median-aggregate the
+log-RGB gradients in UV space. Only gradients supported by multiple
+observations and camera views are retained, and a masked Poisson solve recovers
+one surface-aligned albedo texture. The texture is reprojected into view 2 for
+the comparison below.
+
+\clearpage
+\begin{figure}[htbp]
+  \centering
+  \begin{tabular}{@{}c@{\hspace{0.7em}}c@{\hspace{0.7em}}c@{}}
+    \includegraphics[width=0.30\textwidth]{\assetroot/albedo_2d/weiss/view_002/albedo.png} &
+    \includegraphics[width=0.30\textwidth]{\assetroot/albedo_3d/weiss/visualisations/view_002/albedo.png} &
+    \includegraphics[width=0.30\textwidth]{\assetroot/renders/view_002/gt_albedo.png}
+    \\
+    \textbf{2D Weiss} & \textbf{3D Weiss} & \textbf{Ground truth}
+  \end{tabular}
+  \caption{Gradient-space albedo estimation in image space and in the shared
+  UV atlas, shown in view 2 and compared with ground truth.}
+  \label{fig:weiss-albedo}
+\end{figure}
+
+In 2D, the estimate is sharper than the naive mean or median, but considerable
+shading is still baked into the result. Extending the method to 3D improves the
+separation further by combining surface-aligned evidence across views, yet
+clear residual shading remains. A likely cause is the biased distribution of
+the generated illumination; increasing both the number and diversity of
+lighting conditions and views may reduce this bias.
+
+\subsection{Locally Adaptive Temporal Constraints}
+
+The Weiss estimator encodes a useful statistical prior: filter responses of
+natural images are sparse, while illumination edges move between frames. This
+implicitly favours piecewise-constant reflectance, since most reflectance
+gradients are expected to be zero, but it does not explicitly decide where
+local reflectance should be tied together. The much earlier Retinex family of
+methods makes stronger use of local constancy, but does not exploit the extra
+information available in an illumination sequence. We therefore evaluate
+\href{https://openaccess.thecvf.com/content_cvpr_2015/papers/Laffont_Intrinsic_Decomposition_of_2015_CVPR_paper.pdf}{Laffont and Bazin, \emph{Intrinsic Decomposition of Image Sequences from Local
+Temporal Variations} (2015)}, referred to as \texttt{laffont15} in our
+implementation.
+
+The method combines three types of constraints:
+
+\begin{enumerate}
+  \item \textbf{Adaptive local constraints.} Every frame is divided into
+  overlapping $3\times3$ patches. If shading is constant within a patch, its
+  pixel values differ from the patch reflectance only by a single scale. The
+  method examines each patch across time and uses robust reweighting to reduce
+  the influence of frames containing a shadow boundary, specularity, or other
+  violation of locally constant shading.
+
+  \item \textbf{Long-range pairwise constraints.} Local patches cannot connect
+  regions separated by depth or normal discontinuities. Pixels are therefore
+  clustered by their scale-normalised temporal appearance profiles, and
+  distant pixels from the same cluster are paired. Proportional profiles
+  indicate similar shading changes and constrain the relative reflectance of
+  the two pixels. These constraints are also estimated robustly across time.
+
+  \item \textbf{Scale regularisation.} Local and pairwise relations alone admit
+  the trivial zero-reflectance solution and do not determine absolute scale. A
+  very weak chromaticity term anchors the solution without dominating the
+  temporal constraints.
+\end{enumerate}
+
+The three terms form one sparse least-squares problem, solved independently for
+each colour channel:
+\begin{equation}
+  E(R) = E_{\mathrm{local}}(R)
+       + \gamma_{\mathrm{pair}} E_{\mathrm{pair}}(R)
+       + \gamma_{\mathrm{reg}} E_{\mathrm{reg}}(R).
+  \label{eq:laffont15-energy}
+\end{equation}
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tabular}{@{}c@{\hspace{1.2em}}c@{}}
+    \includegraphics[width=0.40\textwidth]{\assetroot/albedo_2d/laffont15/view_002/albedo.png} &
+    \includegraphics[width=0.40\textwidth]{\assetroot/renders/view_002/gt_albedo.png}
+    \\
+    \textbf{Laffont15} & \textbf{Ground truth}
+  \end{tabular}
+  \caption{Albedo estimated from the 15 relightings of view 2 using local
+  temporal variations and long-range pairwise constraints.}
+  \label{fig:laffont15-albedo}
+\end{figure}
+
+This approach removes the spatially varying shading remarkably well. Its main
+failure in this example is instead the absolute reflectance scale: dark neutral
+materials are reconstructed as much brighter than in the ground truth.
+Normalising temporal appearance profiles removes their magnitude, so bright
+white and near-black neutral patches can have almost identical profile
+directions and be grouped together. Since both are also close to neutral
+chromaticity, the weak scale regulariser cannot reliably separate them and can
+pull the dark material towards brighter tones.
+
+\subsubsection{Proposed Extension to 3D}
+
+The 3D extension is still work in progress. One possible way to carry the local
+part of the method into 3D would be to replace square image patches with, for
+example, geodesic kernels on the mesh surface. Since geometry is available, we
+could also inspect the surface normals and depth continuity and avoid applying
+the local constraint across clearly non-planar or disconnected regions. The
+constraints could then be estimated directly in shared surface coordinates
+using observations from all views and illuminations.
+
+There is also some flexibility in how the long-range pairs are chosen. Rather
+than relying entirely on clusters of normalised appearance profiles, we could
+ask a human or an image-understanding agent to suggest a small number of
+high-confidence surface pairs that are likely to share a material or a shading
+response. This may be a practical way to avoid incorrect links between dark
+and bright neutral regions while still connecting parts of the surface that
+are separated by geometric discontinuities.
+
+\clearpage
+\section{Next Steps}
+
+\subsection{Other Albedo Estimation Methods}
+
+I did not get around to trying all of the available methods. Two remaining
+classical approaches and one learning-based approach could be particularly
+relevant:
+
+\begin{itemize}
+  \item \href{https://people.csail.mit.edu/sparis/publi/2012/sigasia_intrinsic/Laffont_12_Coherent_Intrinsic_Images.pdf}{\emph{Coherent Intrinsic Images from Photo Collections}}
+  is interesting because it is multi-view by design. It does not assume known
+  geometry, but instead reconstructs it alongside the intrinsic decomposition
+  and uses the resulting correspondences to obtain a coherent albedo across
+  views.
+
+  \item \href{https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/eccv2004_intrinsic.pdf}{\emph{Estimating Intrinsic Images from Image Sequences with Biased Illumination}}
+  explicitly addresses biased lighting, such as sequences in which most light
+  comes from above. This could be useful here because image-generation models
+  are also likely to favour common, top-lit illumination. One caveat is that
+  the paper does not report quantitative evaluation results, so its practical
+  performance may vary in our setting.
+
+  \item \href{https://www.cs.cornell.edu/projects/bigtime/}{\emph{Learning Intrinsic Image Decomposition from Watching the World}}
+  provides a learning-based alternative. It learns from image sequences of the
+  same scene under changing illumination and uses consistency across the
+  sequence instead of requiring ground-truth intrinsic decompositions. A
+  similar approach could make sense here because it would avoid direct albedo
+  supervision, which could otherwise bias the model towards synthetic training
+  data and defeat part of the motivation for this setup.
+\end{itemize}
+
+\subsection{More Consistent Relighting Sequences}
+
+Another possible direction would be to fine-tune a video-to-video generation
+model. We could condition it on a video of the baked-lighting RGB rendering as
+the object rotates and ask it to produce a more consistent, light-stage-like
+video. The current image-generation model produces each relighting one frame
+at a time, so it is naturally more prone to small inconsistencies between
+views. These inconsistencies are then difficult for the albedo-estimation
+methods to resolve. I do not think this is the main limiting factor at the
+moment, however, so this is probably a lower priority for now.
+
+\end{document}
