@@ -30,3 +30,7 @@ Thumbs.db
 # OS / Temporary Files
 *.tmp
 tmp/
+
+# Cluster / Local Helper Scripts
+scripts/tex_compile.sh
+

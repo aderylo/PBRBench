@@ -1,0 +1,45 @@
+# Config for direct PBR intrinsic material maps visualization
+defaults:
+  - _self_
+
+predictions_dir: "outputs/pbr_2d"
+data_dir: "data/2d_eval"
+output_dir: "outputs/visuals"
+output_filename: "visuals_intrinsics.pdf"
+
+methods:
+  - id: "supermat"
+    name: "SuperMat"
+  - id: "diffusion_renderer"
+    name: "DiffusionRenderer"
+  - id: "neural_lightrig"
+    name: "Neural LightRig"
+  - id: "pbr_oracle"
+    name: "PBROracleSV (Ours)"
+  - id: "gt"
+    name: "Ground Truth"
+
+samples:
+  - dataset: "dtc"
+    object_id: "Candle_B07HHXZ2G3_GreenCabbage1"
+    view_id: "view_00"
+    in_light: "cobblestone_parish_road"
+    title: "Candle (DTC)"
+
+  - dataset: "polyhaven"
+    object_id: "wooden_crate_02"
+    view_id: "view_00"
+    in_light: "cobblestone_parish_road"
+    title: "Wooden Crate (Poly Haven)"
+
+  - dataset: "objaverse"
+    object_id: "5b5a102914d940099b89dd787f2a6ef8"
+    view_id: "view_00"
+    in_light: "cobblestone_parish_road"
+    title: "Chair (Objaverse)"
+
+  - dataset: "texverse"
+    object_id: "0017d8a5760440f78465a13299bd7760"
+    view_id: "view_00"
+    in_light: "suburban_garden"
+    title: "Containers (TexVerse)"
