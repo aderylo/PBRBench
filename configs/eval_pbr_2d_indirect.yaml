@@ -8,7 +8,6 @@ predictions_dir: outputs/pbr_2d/supermat/predictions
 output_file: null
 save_rerenders: false
 target_envmaps: null
-exclude_source_light: true
 lpips_backbone: alex
 device: cpu
 model_cache_dir: data/checkpoints/torch

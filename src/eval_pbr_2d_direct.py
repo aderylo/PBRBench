@@ -91,6 +91,48 @@ def project_path(value: str | Path) -> Path:
     return path.resolve() if path.is_absolute() else (PROJECT_ROOT / path).resolve()
 
 
+import numpy as np
+
+
+def compute_light_consistency_for_group(
+    group_samples: list[tuple[PBREstimationSample2D, Prediction]]
+) -> dict[str, float]:
+    """Compute per-channel light-induced standard deviation across lightings for one object view."""
+    if len(group_samples) < 2:
+        return {channel: 0.0 for channel in CHANNELS}
+
+    first_sample = group_samples[0][0]
+    if first_sample.mask is None or not first_sample.mask.is_file():
+        return {channel: 0.0 for channel in CHANNELS}
+
+    mask = load_mask(first_sample.mask)
+    channel_stds = {}
+    for channel in CHANNELS:
+        rgb = channel == "albedo"
+        preds = []
+        for sample, prediction in group_samples:
+            pred_path = prediction.channels[channel]
+            if not pred_path.is_file():
+                continue
+            pred_img = load_image(pred_path, rgb=rgb)
+            if rgb:
+                pred_img = srgb_to_linear(pred_img)
+            preds.append(pred_img)
+
+        if len(preds) < 2:
+            channel_stds[channel] = 0.0
+            continue
+
+        preds_array = np.stack(preds, axis=0)
+        std_map = np.std(preds_array, axis=0)
+        if mask.any():
+            channel_stds[channel] = float(np.mean(std_map[mask]))
+        else:
+            channel_stds[channel] = float(np.mean(std_map))
+
+    return channel_stds
+
+
 def evaluate_single_sample(
     sample: PBREstimationSample2D, prediction: Prediction
 ) -> dict[str, dict[str, float]]:
@@ -150,6 +192,19 @@ def evaluate(config: DictConfig) -> DirectEvaluationPayload:
         len(samples),
     )
 
+    # Group valid predictions by (object_id, view_id) to compute light-induced consistency
+    grouped_object_views: dict[tuple[str, str], list[tuple[PBREstimationSample2D, Prediction]]] = defaultdict(list)
+    for sample_id in sorted(predictions):
+        sample = samples.get(sample_id)
+        if sample is not None:
+            grouped_object_views[(sample.object_id, sample.view_id)].append(
+                (sample, predictions[sample_id])
+            )
+
+    consistency_per_view: dict[tuple[str, str], dict[str, float]] = {}
+    for obj_view, group_items in grouped_object_views.items():
+        consistency_per_view[obj_view] = compute_light_consistency_for_group(group_items)
+
     results: dict[str, DirectSampleResult] = {}
     failures: dict[str, str] = {}
     for sample_id in tqdm(
@@ -162,6 +217,10 @@ def evaluate(config: DictConfig) -> DirectEvaluationPayload:
 
         try:
             metrics = evaluate_single_sample(sample, predictions[sample_id])
+            view_stds = consistency_per_view.get((sample.object_id, sample.view_id), {})
+            for channel in CHANNELS:
+                metrics[channel]["light_induced_std"] = view_stds.get(channel, 0.0)
+
             results[sample_id] = DirectSampleResult(
                 object_id=sample.object_id,
                 view_id=sample.view_id,

@@ -137,11 +137,7 @@ def build_job(
         if any(getattr(sample, name) is None for name in CHANNELS):
             state.failures[sample.sample_id] = "missing ground-truth material channel"
             continue
-        sample_targets = [
-            target
-            for target in targets
-            if not bool(config.exclude_source_light) or target["id"] != sample.light_id
-        ]
+        sample_targets = list(targets)
         if not sample_targets:
             state.failures[sample.sample_id] = "no target environment maps remain"
             continue
@@ -293,9 +289,14 @@ def evaluate(config: DictConfig) -> IndirectEvaluationPayload:
         )
         results: dict[str, IndirectSampleResult] = {}
         all_target_metrics: list[dict[str, float]] = []
+        relight_target_metrics: list[dict[str, float]] = []
+        cycle_target_metrics: list[dict[str, float]] = []
         sample_lookup = {sample.sample_id: sample for sample in samples}
         for sample_id, target_paths in state.score_paths.items():
             target_results = {}
+            sample = sample_lookup.get(sample_id)
+            if sample is None:
+                continue
             try:
                 for target_id, (prediction_path, gt_path) in target_paths.items():
                     prediction = load_image(prediction_path, rgb=True)
@@ -305,8 +306,13 @@ def evaluate(config: DictConfig) -> IndirectEvaluationPayload:
                     metrics["ssim"] = ssim(prediction, target, mask)
                     metrics["lpips"] = lpips_metric(prediction, target, mask)
                     target_results[target_id] = metrics
-                sample = sample_lookup[sample_id]
-                all_target_metrics.extend(target_results.values())
+
+                    all_target_metrics.append(metrics)
+                    if target_id == sample.light_id:
+                        cycle_target_metrics.append(metrics)
+                    else:
+                        relight_target_metrics.append(metrics)
+
                 results[sample_id] = IndirectSampleResult(
                     object_id=sample.object_id,
                     view_id=sample.view_id,
@@ -318,6 +324,15 @@ def evaluate(config: DictConfig) -> IndirectEvaluationPayload:
                 log.info("Evaluated %s", sample_id)
             except (FileNotFoundError, ValueError) as error:
                 state.failures[sample_id] = str(error)
+
+    if not cycle_target_metrics:
+        log.warning("No cycle-consistency targets evaluated (source light not in target envmaps).")
+
+    aggregate = {
+        "relight": mean_metrics(relight_target_metrics) if relight_target_metrics else mean_metrics(all_target_metrics),
+        "cycle": mean_metrics(cycle_target_metrics) if cycle_target_metrics else None,
+        "overall": mean_metrics(all_target_metrics),
+    }
 
     payload = IndirectEvaluationPayload(
         evaluation="pbr_2d_indirect",
@@ -334,7 +349,7 @@ def evaluate(config: DictConfig) -> IndirectEvaluationPayload:
             evaluated=len(results),
             failed=len(state.failures),
         ),
-        aggregate=mean_metrics(all_target_metrics),
+        aggregate=aggregate,
         samples=results,
         failures=state.failures,
     )
