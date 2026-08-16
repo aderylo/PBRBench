@@ -14,6 +14,7 @@ if TYPE_CHECKING:
 # Bump whenever the documented output conventions (encoding, normal space,
 # alpha semantics) change so that old metadata is invalidated on resume.
 METADATA_SCHEMA_VERSION = 1
+VIEW_METADATA_SCHEMA_VERSION = 1
 
 
 def load_subset(path: Path) -> list[str]:
@@ -143,6 +144,36 @@ def recipe_hash(job: "BakeJob") -> str:
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
+def view_recipe_hash(job: "RenderJob") -> str:
+    """Stable hash of the 2D view recipe so config changes invalidate old outputs.
+
+    Absolute paths (asset, output, light files) are excluded on purpose so
+    moving the dataset does not trigger a re-render, only setting changes do.
+    """
+    payload = {
+        "metadata_schema_version": VIEW_METADATA_SCHEMA_VERSION,
+        "object_id": job.object_id,
+        "views": [asdict(view) for view in job.views],
+        "camera": asdict(job.camera),
+        "lights": [
+            {
+                "id": light.id,
+                "rotation_deg": light.rotation_deg,
+                "strength": light.strength,
+            }
+            for light in job.lights
+        ],
+        "renderer": asdict(job.renderer),
+        "min_foreground_pixels": job.min_foreground_pixels,
+        "fit": {
+            "min_fraction": job.fit_min_fraction,
+            "max_fraction": job.fit_max_fraction,
+        },
+    }
+    canonical = json.dumps(payload, sort_keys=True)
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
 @dataclass(frozen=True)
 class ViewSpec:
     """One canonical camera orbit view."""
@@ -157,10 +188,15 @@ class ViewSpec:
 
 @dataclass(frozen=True)
 class CameraSpec:
-    """Shared camera settings for all views of an asset."""
+    """Shared camera settings for all views of an asset.
+
+    The camera distance is not configured directly: it is derived from the
+    desired bounding-sphere fill fraction and refined per view by the camera
+    fit, so every view frames the object consistently.
+    """
 
     elevation_deg: float
-    distance: float
+    fill_fraction: float
     focal_length_mm: float
     sensor_width_mm: float
 
@@ -168,7 +204,7 @@ class CameraSpec:
     def from_dict(cls, payload: dict[str, Any]) -> "CameraSpec":
         return cls(
             elevation_deg=float(payload["elevation_deg"]),
-            distance=float(payload["distance"]),
+            fill_fraction=float(payload["fill_fraction"]),
             focal_length_mm=float(payload["focal_length_mm"]),
             sensor_width_mm=float(payload["sensor_width_mm"]),
         )
@@ -233,6 +269,8 @@ class RenderJob:
     renderer: RendererSpec
     overwrite: bool
     min_foreground_pixels: int
+    fit_min_fraction: float
+    fit_max_fraction: float
 
     @classmethod
     def from_dict(cls, payload: dict[str, Any]) -> "RenderJob":
@@ -246,6 +284,8 @@ class RenderJob:
             renderer=RendererSpec.from_dict(payload["renderer"]),
             overwrite=bool(payload["overwrite"]),
             min_foreground_pixels=int(payload["min_foreground_pixels"]),
+            fit_min_fraction=float(payload.get("fit_min_fraction", 0.02)),
+            fit_max_fraction=float(payload.get("fit_max_fraction", 0.60)),
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -294,6 +334,7 @@ class ViewMetadata:
     asset_path: str
     camera: CameraMetadata
     normalization_source_to_world: list[list[float]]
+    recipe_hash: str
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)

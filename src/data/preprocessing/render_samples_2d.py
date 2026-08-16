@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import subprocess
 import tempfile
+import json
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
@@ -21,10 +22,12 @@ from src.data.preprocessing.utils import (  # noqa: E402
     RendererSpec,
     ViewSpec,
     asset_path,
+    completion_marker,
     resolve_lights,
     resolved,
     selected_objects,
     orbit_views,
+    view_recipe_hash,
     write_json,
 )
 
@@ -60,12 +63,24 @@ def render_one(
 
 
 def is_complete(job: RenderJob) -> bool:
-    """Check whether every expected 2D artifact already exists for an object."""
+    """Check whether every expected 2D artifact exists for an object and was
+    produced by the current recipe."""
     output_dir = Path(job.output_dir)
+    if not completion_marker(output_dir).is_file():
+        return False
+    recipe = view_recipe_hash(job)
     for view in job.views:
         view_dir = output_dir / view.id
-        expected = [view_dir / "metadata.json"]
-        expected.extend(view_dir / "rgb" / f"{light.id}.png" for light in job.lights)
+        metadata_path = view_dir / "metadata.json"
+        if not metadata_path.is_file():
+            return False
+        try:
+            payload = json.loads(metadata_path.read_text())
+        except Exception:
+            return False
+        if payload.get("recipe_hash") != recipe:
+            return False
+        expected = [view_dir / "rgb" / f"{light.id}.png" for light in job.lights]
         expected.extend(
             view_dir / f"{name}.png"
             for name in ("albedo", "roughness", "metallic", "normal", "depth", "mask")
@@ -88,17 +103,19 @@ def build_job(config: DictConfig, object_id: str, source_asset: Path) -> RenderJ
         renderer=RendererSpec.from_dict(resolved(config.rendering)),
         overwrite=not bool(config.resume),
         min_foreground_pixels=int(config.min_foreground_pixels),
+        fit_min_fraction=float(config.views.fit_min_fraction),
+        fit_max_fraction=float(config.views.fit_max_fraction),
     )
 
 
 @hydra.main(
     version_base=None,
     config_path="../../../configs",
-    config_name="data/preprocessing/texverse_2d",
+    config_name="data/preprocessing/render_texverse_2d",
 )
 def main(config: DictConfig) -> None:
     object_ids = selected_objects(config)
-    helper = Path(__file__).with_name("_render_views_2d.py")
+    helper = Path(__file__).with_name("_render_samples_2d.py")
     failures: list[RenderFailure] = []
     log_dir = Path(config.blender_log_dir)
     with tempfile.TemporaryDirectory(prefix="pbr_render_2d_") as temporary_directory:

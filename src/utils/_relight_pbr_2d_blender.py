@@ -13,7 +13,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 import bpy  # noqa: E402
 from mathutils import Matrix  # noqa: E402
 
-from src.data.preprocessing._render_views_2d import (  # noqa: E402
+from src.data.preprocessing._render_samples_2d import (  # noqa: E402
     clear_scene,
     configure_render,
     import_asset,
@@ -49,7 +49,7 @@ def add_camera(camera_data: dict):
     camera.name = "BenchmarkCamera"
     width = int(camera_data["resolution"][0])
     camera.data.sensor_width = 36.0
-    camera.data.sensor_fit = "HORIZONTAL"
+    camera.data.sensor_height = 36.0
     camera.data.lens = float(camera_data["intrinsics"][0][0]) * 36.0 / width
     camera.matrix_world = Matrix(camera_data["camera_to_world"])
     bpy.context.scene.camera = camera

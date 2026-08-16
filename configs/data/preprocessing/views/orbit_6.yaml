@@ -3,6 +3,12 @@
 name: orbit_6
 elevation_deg: 20.0
 yaw_degrees: [0.0, 60.0, 120.0, 180.0, 240.0, 300.0]
-distance: 2.0
 focal_length_mm: 50.0
-sensor_width_mm: 36.0
+sensor_width_mm: 32.0
+# Distance is derived from the normalized bounding sphere (radius 0.5) so the
+# object fills this fraction of the camera half-FOV before per-view fitting.
+fill_fraction: 0.85
+# Per-view camera fit window: share of frame pixels the object silhouette
+# should cover after adjusting the distance.
+fit_min_fraction: 0.02
+fit_max_fraction: 0.60

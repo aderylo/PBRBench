@@ -22,6 +22,8 @@ from src.data.preprocessing.utils import (  # noqa: E402
     RenderJob,
     RendererSpec,
     ViewMetadata,
+    completion_marker,
+    view_recipe_hash,
 )
 
 
@@ -88,8 +90,15 @@ def add_camera(camera_config: CameraSpec) -> bpy.types.Object:
     camera.name = "BenchmarkCamera"
     camera.data.lens = camera_config.focal_length_mm
     camera.data.sensor_width = camera_config.sensor_width_mm
-    camera.data.sensor_fit = "HORIZONTAL"
+    camera.data.sensor_height = camera_config.sensor_width_mm
     bpy.context.scene.camera = camera
+    target = bpy.data.objects.new("BenchmarkCameraTarget", None)
+    bpy.context.scene.collection.objects.link(target)
+    target.location = (0.0, 0.0, 0.0)
+    constraint = camera.constraints.new(type="TRACK_TO")
+    constraint.target = target
+    constraint.track_axis = "TRACK_NEGATIVE_Z"
+    constraint.up_axis = "UP_Y"
     return camera
 
 
@@ -103,8 +112,91 @@ def place_camera(
         distance * math.cos(elevation) * math.sin(yaw),
         distance * math.sin(elevation),
     )
-    camera.rotation_euler = (-camera.location).to_track_quat("-Z", "Y").to_euler()
     bpy.context.view_layer.update()
+
+
+def initial_distance(camera_config: CameraSpec) -> float:
+    """Distance that fills ``fill_fraction`` of the half-FOV with the object.
+
+    The object's bounding sphere has radius 0.5 after normalization, so the
+    distance that puts the sphere at the requested fill of the camera's
+    square half-FOV follows directly from the sensor and lens.
+    """
+    half_fov = math.atan(
+        camera_config.sensor_width_mm / 2.0 / camera_config.focal_length_mm
+    )
+    return 0.5 / math.tan(camera_config.fill_fraction * half_fov)
+
+
+def silhouette_fraction(path: Path) -> float:
+    """Share of pixels covered by the object in the most recently saved image."""
+    image = bpy.data.images.load(str(path), check_existing=False)
+    pixels = image.pixels[:]
+    total = len(pixels) // 4
+    foreground = sum(
+        1 for index in range(3, len(pixels), 4) if pixels[index] >= 0.5
+    )
+    bpy.data.images.remove(image)
+    return foreground / max(total, 1)
+
+
+def fit_camera_distance(
+    camera: bpy.types.Object,
+    yaw_deg: float,
+    elevation_deg: float,
+    distance: float,
+    *,
+    min_distance: float,
+    max_distance: float,
+    min_fraction: float,
+    max_fraction: float,
+    preview_path: Path,
+    max_iterations: int = 6,
+) -> float:
+    """Adjust the camera distance until the object covers the target window.
+
+    Coverage is measured with a quick low-resolution EEVEE alpha render of the
+    authored materials. The distance is bounded below by the distance at which
+    the normalized bounding sphere would fill the frame almost completely, so
+    the fit can zoom in on thin objects but never clips the mesh.
+    """
+    scene = bpy.context.scene
+    saved_engine = scene.render.engine
+    saved_resolution_x = scene.render.resolution_x
+    saved_resolution_y = scene.render.resolution_y
+    saved_color_mode = scene.render.image_settings.color_mode
+    saved_filepath = scene.render.filepath
+    saved_eevee_samples = scene.eevee.taa_render_samples
+    scene.render.engine = "BLENDER_EEVEE"
+    scene.render.resolution_x = 256
+    scene.render.resolution_y = 256
+    scene.render.image_settings.color_mode = "RGBA"
+    scene.eevee.taa_render_samples = 1
+    try:
+        for _ in range(max_iterations):
+            place_camera(camera, yaw_deg, elevation_deg, distance)
+            scene.render.filepath = str(preview_path)
+            bpy.ops.render.render(write_still=True)
+            fraction = silhouette_fraction(preview_path)
+            if fraction <= 0:
+                raise RuntimeError("camera fit produced an empty silhouette")
+            if min_fraction <= fraction <= max_fraction:
+                break
+            target = min_fraction if fraction < min_fraction else max_fraction
+            adjusted = distance * math.sqrt(fraction / target)
+            adjusted = min(max(adjusted, min_distance), max_distance)
+            if abs(adjusted - distance) < 1e-4:
+                break
+            distance = adjusted
+    finally:
+        scene.render.engine = saved_engine
+        scene.render.resolution_x = saved_resolution_x
+        scene.render.resolution_y = saved_resolution_y
+        scene.render.image_settings.color_mode = saved_color_mode
+        scene.render.filepath = saved_filepath
+        scene.eevee.taa_render_samples = saved_eevee_samples
+        preview_path.unlink(missing_ok=True)
+    return distance
 
 
 def configure_render(config: RendererSpec) -> None:
@@ -439,6 +531,13 @@ def camera_metadata(camera: bpy.types.Object, resolution: int) -> CameraMetadata
     )
 
 
+def recipe_matches(metadata_path: Path, recipe: str) -> bool:
+    try:
+        return json.loads(metadata_path.read_text()).get("recipe_hash") == recipe
+    except Exception:
+        return False
+
+
 def main() -> None:
     job = RenderJob.from_dict(json.loads(arguments().job.read_text()))
     output_dir = Path(job.output_dir)
@@ -448,11 +547,20 @@ def main() -> None:
     camera = add_camera(job.camera)
     configure_render(job.renderer)
     original_engine = bpy.context.scene.render.engine
+    recipe = view_recipe_hash(job)
+
+    half_fov = math.atan(
+        job.camera.sensor_width_mm / 2.0 / job.camera.focal_length_mm
+    )
+    start_distance = initial_distance(job.camera)
+    min_distance = 0.5 / math.tan(0.95 * half_fov)
+    max_distance = 8.0
 
     # Render every illumination observation before modifying material graphs for
     # reference passes. Otherwise the next view would see the preceding PBR
     # channel material instead of the original authored material.
     pending_views = []
+    fitted_distances = {}
     for view in job.views:
         view_dir = output_dir / view.id
         metadata_path = view_dir / "metadata.json"
@@ -464,6 +572,7 @@ def main() -> None:
         if (
             metadata_path.is_file()
             and all(path.is_file() for path in expected)
+            and recipe_matches(metadata_path, recipe)
             and not job.overwrite
         ):
             print(f"skip complete {job.object_id}/{view.id}")
@@ -474,12 +583,23 @@ def main() -> None:
         metadata_path.unlink(missing_ok=True)
         pending_views.append(view)
 
-        place_camera(
+    for view in pending_views:
+        view_dir = output_dir / view.id
+        view_dir.mkdir(parents=True, exist_ok=True)
+        distance = fit_camera_distance(
             camera,
             view.yaw_deg,
             job.camera.elevation_deg,
-            job.camera.distance,
+            start_distance,
+            min_distance=min_distance,
+            max_distance=max_distance,
+            min_fraction=job.fit_min_fraction,
+            max_fraction=job.fit_max_fraction,
+            preview_path=view_dir / ".fit_preview.png",
         )
+        fitted_distances[view.id] = distance
+        print(f"fit {job.object_id}/{view.id}: distance={distance:.3f}")
+        place_camera(camera, view.yaw_deg, job.camera.elevation_deg, distance)
         bpy.context.scene.render.engine = original_engine
         for light in job.lights:
             setup_environment(light)
@@ -497,7 +617,7 @@ def main() -> None:
             camera,
             view.yaw_deg,
             job.camera.elevation_deg,
-            job.camera.distance,
+            fitted_distances[view.id],
         )
         render_reference_passes(
             view_dir, meshes, camera, job.min_foreground_pixels
@@ -506,9 +626,12 @@ def main() -> None:
             asset_path=job.asset_path,
             camera=camera_metadata(camera, job.renderer.resolution),
             normalization_source_to_world=matrix_rows(normalization),
+            recipe_hash=recipe,
         )
         metadata_path.parent.mkdir(parents=True, exist_ok=True)
         metadata_path.write_text(json.dumps(metadata.to_dict(), indent=2) + "\n")
+
+    completion_marker(output_dir).touch()
 
 
 if __name__ == "__main__":
