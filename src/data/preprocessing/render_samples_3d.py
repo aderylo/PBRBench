@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import subprocess
 import tempfile
 from dataclasses import asdict, dataclass
@@ -19,6 +20,9 @@ from src.data.preprocessing.utils import (  # noqa: E402
     LightSpec,
     RendererSpec,
     asset_path,
+    completion_marker,
+    expected_paths,
+    recipe_hash,
     resolve_lights,
     resolved,
     selected_objects,
@@ -57,11 +61,17 @@ def render_one(
 
 
 def is_complete(job: BakeJob) -> bool:
-    """Check whether every expected 3D artifact already exists for an object."""
+    """Check whether a valid, up-to-date sample already exists for an object."""
     output_dir = Path(job.output_dir)
-    expected = [output_dir / "mesh.obj", output_dir / "metadata.json"]
-    expected.extend(output_dir / "textures" / f"{light.id}.png" for light in job.lights)
-    return all(path.is_file() for path in expected)
+    if not completion_marker(output_dir).is_file():
+        return False
+    if not all(path.is_file() for path in expected_paths(job)):
+        return False
+    try:
+        payload = json.loads((output_dir / "metadata.json").read_text())
+    except (OSError, ValueError):
+        return False
+    return payload.get("recipe_hash") == recipe_hash(job)
 
 
 def build_job(config: DictConfig, object_id: str, source_asset: Path) -> BakeJob:
@@ -79,11 +89,11 @@ def build_job(config: DictConfig, object_id: str, source_asset: Path) -> BakeJob
 @hydra.main(
     version_base=None,
     config_path="../../../configs",
-    config_name="data/preprocessing/texverse_3d",
+    config_name="data/preprocessing/render_texverse_3d",
 )
 def main(config: DictConfig) -> None:
     object_ids = selected_objects(config)
-    helper = Path(__file__).with_name("_render_views_3d.py")
+    helper = Path(__file__).with_name("_render_samples_3d.py")
     failures: list[BakeFailure] = []
     log_dir = Path(config.blender_log_dir)
     with tempfile.TemporaryDirectory(prefix="pbr_render_3d_") as temporary_directory:

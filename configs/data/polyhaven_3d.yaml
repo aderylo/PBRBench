@@ -1,0 +1,6 @@
+_target_: src.data.pbr_estimation_dataset_3d.PBREstimationDataset3D
+root: data/3d_eval/polyhaven
+split_file: configs/data/subsets/polyhaven_pbr_64.yaml
+image_size: 1024
+limit: null
+source: polyhaven

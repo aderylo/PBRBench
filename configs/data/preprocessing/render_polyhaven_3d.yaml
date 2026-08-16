@@ -1,0 +1,19 @@
+# @package _global_
+defaults:
+  - /data/preprocessing/lighting: polyhaven_source_v0
+  - /data/preprocessing/rendering: blender_cycles_1024
+  - _self_
+
+source:
+  name: polyhaven
+  root: data/assets
+  asset_template: polyhaven/{object_id}.glb
+
+subset_file: configs/data/subsets/polyhaven_pbr_64.yaml
+output_root: data/3d_eval/${source.name}
+blender_log_dir: ${output_root}/logs
+object_ids: null
+max_objects: null
+# Skip fully completed objects. Set false to rebake every object.
+resume: true
+dry_run: false

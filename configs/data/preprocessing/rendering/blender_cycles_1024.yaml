@@ -1,0 +1,11 @@
+# @package rendering
+
+name: blender_cycles
+executable: blender
+resolution: 1024
+texture_resolution: 1024
+bake_margin: 16
+samples_per_pixel: 32
+denoise: true
+device: cuda
+transparent_background: true

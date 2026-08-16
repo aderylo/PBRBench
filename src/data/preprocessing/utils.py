@@ -2,13 +2,18 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
+
+# Bump whenever the documented output conventions (encoding, normal space,
+# alpha semantics) change so that old metadata is invalidated on resume.
+METADATA_SCHEMA_VERSION = 1
 
 
 def load_subset(path: Path) -> list[str]:
@@ -88,6 +93,56 @@ def resolved(value: "DictConfig") -> dict[str, Any]:
     return OmegaConf.to_container(value, resolve=True)
 
 
+def parse_texture_resolution(value: Any) -> int | None:
+    """Coerce a texture resolution to int; invalid values raise loudly."""
+    return int(value) if value is not None else None
+
+
+def completion_marker(output_dir: Path) -> Path:
+    """Path of the empty marker file that signals a fully prepared object."""
+    return output_dir / "SUCCESS"
+
+
+def expected_paths(job: "BakeJob") -> list[Path]:
+    """All artifact paths a fully prepared 3D object must provide."""
+    output_dir = Path(job.output_dir)
+    paths = [
+        output_dir / "mesh.obj",
+        output_dir / "metadata.json",
+        output_dir / "uv_mask.png",
+    ]
+    paths.extend(output_dir / "textures" / f"{light.id}.png" for light in job.lights)
+    paths.extend(
+        output_dir / "pbr" / f"{channel}.png"
+        for channel in ("albedo", "roughness", "metallic", "normal")
+    )
+    return paths
+
+
+def recipe_hash(job: "BakeJob") -> str:
+    """Stable hash of the bake settings so config changes invalidate old outputs.
+
+    Absolute paths are excluded on purpose: moving the dataset must not
+    trigger a rebake, only setting changes should. The metadata schema version
+    is included so that changes to documented conventions also invalidate.
+    """
+    payload = {
+        "metadata_schema_version": METADATA_SCHEMA_VERSION,
+        "object_id": job.object_id,
+        "lights": [
+            {
+                "id": light.id,
+                "rotation_deg": light.rotation_deg,
+                "strength": light.strength,
+            }
+            for light in job.lights
+        ],
+        "renderer": asdict(job.renderer),
+    }
+    canonical = json.dumps(payload, sort_keys=True)
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
 @dataclass(frozen=True)
 class ViewSpec:
     """One canonical camera orbit view."""
@@ -147,7 +202,7 @@ class RendererSpec:
     denoise: bool
     device: str
     transparent_background: bool
-    texture_resolution: int
+    texture_resolution: int | None
     bake_margin: int
 
     @classmethod
@@ -158,7 +213,9 @@ class RendererSpec:
             denoise=bool(payload["denoise"]),
             device=str(payload["device"]),
             transparent_background=bool(payload.get("transparent_background", True)),
-            texture_resolution=int(payload.get("texture_resolution", payload["resolution"])),
+            texture_resolution=parse_texture_resolution(
+                payload.get("texture_resolution")
+            ),
             bake_margin=int(payload.get("bake_margin", 16)),
         )
 
@@ -248,6 +305,12 @@ class ObjectMetadata:
 
     asset_path: str
     normalization_source_to_world: list[list[float]]
+    recipe_hash: str
+    blender_version: str
+    materials: list[str] = field(default_factory=list)
+    color_encoding: dict[str, Any] = field(default_factory=dict)
+    normal_convention: dict[str, Any] = field(default_factory=dict)
+    alpha_convention: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
