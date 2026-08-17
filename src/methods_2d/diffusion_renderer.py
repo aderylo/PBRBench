@@ -61,7 +61,7 @@ class DiffusionRenderer2D(BaseMaterialEstimator2D):
         self,
         *,
         config_path: str | Path = "third_party/diffusion-renderer/configs/rgbx_inference.yaml",
-        checkpoint_dir: str | Path = "third_party/diffusion-renderer/checkpoints/diffusion_renderer-inverse-svd",
+        checkpoint_dir: str | Path = ".weights/diffusion_renderer",
         device: str = "cuda:0",
         image_size: int = 512,
         n_steps: int = 20,
@@ -89,9 +89,7 @@ class DiffusionRenderer2D(BaseMaterialEstimator2D):
                 f"DiffusionRenderer checkpoint directory not found at: {self.checkpoint_dir}\n"
                 f"Please download weights using:\n"
                 f"third_party/.venvs/diffusion_renderer/bin/python "
-                f"third_party/diffusion-renderer/utils/download_weights.py "
-                f"--repo_id nexuslrf/diffusion_renderer-inverse-svd "
-                f"--local_dir {self.checkpoint_dir}"
+                f"scripts/setup/diffusion_renderer_weights.py "
             )
 
         import torch

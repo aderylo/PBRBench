@@ -51,7 +51,7 @@ class NeuralLightRig2D(BaseMaterialEstimator2D):
         self.checkpoint_repo = checkpoint_repo
         self.checkpoint_revision = checkpoint_revision
         self.checkpoint_dir = (
-            self.repo_root / "ckpt"
+            self.project_root / ".weights" / "neural_lightrig"
             if checkpoint_dir is None
             else self.resolve_path(checkpoint_dir)
         )

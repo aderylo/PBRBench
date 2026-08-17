@@ -70,7 +70,7 @@ Direct PBR scores and relighting scores remain separate so that the benchmark ex
 
 Object-centric methods such as MaterialAnything, MaterialFusion/StableMaterial, Neural LightRig, SuperMat, DualMat, and MatMart form the primary comparison set.
 
-General image-space inverse-rendering methods such as RGB↔X, Intrinsic Image Diffusion, IntrinsicAnything, and image-mode DiffusionRenderer are secondary single-view baselines. They help measure how well general 2D priors transfer to object material recovery, but do not define the main task.
+General image-space inverse-rendering methods such as RGB↔X, Intrinsic Image Diffusion, IntrinsicAnything, IDArb, and image-mode DiffusionRenderer are secondary single-view baselines. They help measure how well general 2D priors transfer to object material recovery, but do not define the main task.
 
 Third-party implementations are included as Git submodules under `third_party/`; this repository does not vendor or modify their source. Each method keeps its own environment and installation procedure. Small adapters under `src/methods_2d/` and `src/methods_3d/` translate between the benchmark sample format and the method's native interface.
 
@@ -127,8 +127,8 @@ uv run python src/data/preprocessing/render_views_3d.py \
   --config-name data/preprocessing/polyhaven_3d
 
 # Create a cached, uv-managed environment for the selected method (once)
-uv run python scripts/deps/neural_lightrig.py
-uv run python scripts/deps/supermat.py
+uv run python scripts/setup/neural_lightrig_deps.py
+uv run python scripts/setup/supermat_deps.py
 
 # Screen-space PBR inference runs in the selected method's uv environment
 third_party/.venvs/supermat/bin/python src/infer_pbr_2d.py method_2d=supermat

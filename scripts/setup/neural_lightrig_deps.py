@@ -2,7 +2,6 @@
 
 from _setup import setup_method_cli
 
-
 if __name__ == "__main__":
     setup_method_cli(
         "neural_lightrig",
