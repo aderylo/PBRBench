@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import json
+from bisect import bisect_right
 from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
+from itertools import accumulate
 from pathlib import Path
 from typing import Any
 
 import yaml
+from hydra.utils import instantiate
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
@@ -18,23 +21,36 @@ def _resolve_path(path: str | Path) -> Path:
     return p.resolve() if p.is_absolute() else (PROJECT_ROOT / p).resolve()
 
 
-def _parse_split(path: Path) -> dict[str, set[str] | None]:
+def _parse_split(path: Path) -> dict[str, dict[str, set[str] | None]]:
+    """Parse a split file into ``object -> {view | "*": lights}`` specs.
+
+    The inner mapping keys are view ids; a ``"*"`` key means every view of the
+    object is allowed.  The value is the set of allowed light ids, or ``None``
+    when every light is allowed.
+    """
     payload = yaml.safe_load(path.read_text()) or {}
     items = (
         payload
         if isinstance(payload, list)
         else (payload.get("samples") or payload.get("objects") or [])
     )
-    specs: dict[str, set[str] | None] = {}
+    specs: dict[str, dict[str, set[str] | None]] = {}
     for item in items:
         if isinstance(item, dict):
             obj = item.get("object") or item.get("id")
             if not obj:
                 continue
             views = item.get("views")
-            specs[str(obj)] = {str(v) for v in views} if views else None
+            lights = item.get("lights")
+            light_set = {str(v) for v in lights} if lights else None
+            view_spec = specs.setdefault(str(obj), {})
+            if views:
+                for view in views:
+                    view_spec[str(view)] = light_set
+            else:
+                view_spec["*"] = light_set
         else:
-            specs[str(item)] = None
+            specs[str(item)] = {"*": None}
     return specs
 
 
@@ -91,11 +107,17 @@ class PBREstimationDataset2D(Sequence[PBREstimationSample2D]):
             view_id = view_dir.name
             self._validate_identifier(object_id, "object_id", metadata_path)
             self._validate_identifier(view_id, "view_id", metadata_path)
+
+            light_set: set[str] | None = None
             if allowed is not None:
-                if object_id not in allowed:
+                view_spec = allowed.get(object_id)
+                if view_spec is None:
                     continue
-                allowed_views = allowed[object_id]
-                if allowed_views is not None and view_id not in allowed_views:
+                if "*" in view_spec:
+                    light_set = view_spec["*"]
+                elif view_id in view_spec:
+                    light_set = view_spec[view_id]
+                else:
                     continue
 
             try:
@@ -113,6 +135,8 @@ class PBREstimationDataset2D(Sequence[PBREstimationSample2D]):
             for rgb_path in rgb_paths:
                 light_id = rgb_path.stem
                 self._validate_identifier(light_id, "light_id", rgb_path)
+                if light_set is not None and light_id not in light_set:
+                    continue
                 sample_id = f"{self.source}__{object_id}__{view_id}__{light_id}"
                 if sample_id in self._sample_map:
                     raise ValueError(f"Duplicate sample_id: {sample_id}")
@@ -164,45 +188,39 @@ class PBREstimationDataset2D(Sequence[PBREstimationSample2D]):
 
 
 class MultiSourcePBREstimationDataset2D(Sequence[PBREstimationSample2D]):
-    """Discover completed observation directories across multiple data sources."""
+    """Thin wrapper over independently configured sub-datasets.
+
+    Each entry in ``datasets`` is a per-source dataset config (carrying its own
+    ``_target_``); they are instantiated one by one in order, and index lookups
+    are routed to the owning sub-dataset via cumulative offsets.
+    """
 
     def __init__(
         self,
-        sources: Mapping[str, str | Path | Mapping[str, Any]],
-        split_file: str | Path | None = None,
+        datasets: Sequence[Mapping[str, Any] | PBREstimationDataset2D],
         limit: int | None = None,
     ) -> None:
-        self.limit = limit
+        if limit is not None and limit < 0:
+            raise ValueError("limit must be non-negative or null")
+
         self._datasets: list[PBREstimationDataset2D] = []
         remaining = limit
-
-        for name, cfg in sources.items():
+        for cfg in datasets:
             if remaining is not None and remaining <= 0:
                 break
-            if isinstance(cfg, (str, Path)):
-                dir_path = Path(cfg)
-                kwargs: dict[str, Any] = {}
-            elif isinstance(cfg, Mapping):
-                dir_path = Path(cfg["data_dir"])
-                kwargs = {k: v for k, v in cfg.items() if k != "data_dir"}
-            else:
-                raise TypeError(f"Invalid source config for {name}: {cfg}")
-
-            sub_ds = PBREstimationDataset2D(
-                data_dir=dir_path,
-                source=name,
-                split_file=kwargs.get("split_file", split_file),
-                limit=kwargs.get("limit", remaining),
+            sub_dataset = (
+                cfg if isinstance(cfg, PBREstimationDataset2D) else instantiate(cfg)
             )
-            self._datasets.append(sub_ds)
+            self._datasets.append(sub_dataset)
             if remaining is not None:
-                remaining -= len(sub_ds)
+                remaining -= len(sub_dataset)
 
         self._samples = tuple(
             sample for dataset in self._datasets for sample in dataset
         )
         if limit is not None:
             self._samples = self._samples[:limit]
+        self._offsets = list(accumulate(len(d) for d in self._datasets))
         self._sample_map = {sample.sample_id: sample for sample in self._samples}
 
     def get_sample(self, sample_id: str) -> PBREstimationSample2D | None:
@@ -212,7 +230,16 @@ class MultiSourcePBREstimationDataset2D(Sequence[PBREstimationSample2D]):
         return len(self._samples)
 
     def __getitem__(self, index: int) -> PBREstimationSample2D:
-        return self._samples[index]
+        size = len(self)
+        if index < 0:
+            index += size
+        if index < 0 or index >= size:
+            raise IndexError(index)
+        sub_index = bisect_right(self._offsets, index)
+        if sub_index == len(self._datasets):
+            sub_index -= 1
+        prev = self._offsets[sub_index - 1] if sub_index > 0 else 0
+        return self._datasets[sub_index][index - prev]
 
     def __iter__(self) -> Iterator[PBREstimationSample2D]:
         return iter(self._samples)

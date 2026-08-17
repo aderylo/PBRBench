@@ -2,131 +2,195 @@ name: polyhaven_2d
 source: polyhaven
 
 samples:
-  - object: portable_generator
+  - object: Camera_01
     views: [view_00]
-  - object: industrial_microscope
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
+  - object: CashRegister_01
     views: [view_00]
-  - object: adjustable_wrench
-    views: [view_00]
-  - object: handsaw_wood
-    views: [view_00]
-  - object: metal_tool_chest
-    views: [view_00]
-  - object: vintage_day_bed
-    views: [view_00]
-  - object: metal_stool_01
-    views: [view_00]
-  - object: binoculars
-    views: [view_00]
-  - object: vintage_flashlight
-    views: [view_00]
-  - object: pastic_torch_6v
-    views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
   - object: Drill_01
     views: [view_00]
-  - object: Television_01
-    views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
   - object: Lantern_01
     views: [view_00]
-  - object: brass_vase_03
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
+  - object: Megaphone_01
     views: [view_00]
-  - object: cannon_01
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
+  - object: Television_01
     views: [view_00]
-  - object: wooden_crate_02
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
+  - object: adjustable_wrench
     views: [view_00]
-  - object: rusted_spade_01
-    views: [view_00]
-  - object: garden_gloves_01
-    views: [view_00]
-  - object: seeding_tray_01
-    views: [view_00]
-  - object: garden_hose_wall_mounted_01
-    views: [view_00]
-  - object: planter_box_01
-    views: [view_00]
-  - object: vintage_microwave
-    views: [view_00]
-  - object: mid_century_lounge_chair
-    views: [view_00]
-  - object: jacaranda_tree
-    views: [view_00]
-  - object: marble_bust_01
-    views: [view_00]
-  - object: seadogs_compass
-    views: [view_00]
-  - object: dead_tree_trunk_02
-    views: [view_00]
-  - object: lemon
-    views: [view_00]
-  - object: tree_small_02
-    views: [view_00]
-  - object: cement_bag
-    views: [view_00]
-  - object: industrial_wall_lamp
-    views: [view_00]
-  - object: industrial_pipe_lamp
-    views: [view_00]
-  - object: cleaner_tin_01
-    views: [view_00]
-  - object: bleach_bottle
-    views: [view_00]
-  - object: dustpan
-    views: [view_00]
-  - object: gaming_console
-    views: [view_00]
-  - object: wicker_basket_02
-    views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
   - object: antique_ceramic_vase_01
     views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
+  - object: binoculars
+    views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
+  - object: bleach_bottle
+    views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
+  - object: boombox
+    views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
+  - object: brass_vase_03
+    views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
+  - object: cannon_01
+    views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
+  - object: carved_wooden_elephant
+    views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
+  - object: cement_bag
+    views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
+  - object: cigarette_pack
+    views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
+  - object: circuit_board
+    views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
+  - object: cleaner_tin_01
+    views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
+  - object: croissant
+    views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
+  - object: dartboard
+    views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
+  - object: dead_tree_trunk_02
+    views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
+  - object: dustpan
+    views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
+  - object: fishermans_hat
+    views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
+  - object: flathead_screwdriver
+    views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
+  - object: gaming_console
+    views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
+  - object: garden_gloves_01
+    views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
+  - object: garden_hose_wall_mounted_01
+    views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
+  - object: grass_bermuda_01
+    views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
+  - object: handsaw_wood
+    views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
+  - object: horse_statue_01
+    views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
+  - object: industrial_microscope
+    views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
+  - object: industrial_pipe_lamp
+    views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
+  - object: industrial_wall_lamp
+    views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
+  - object: jacaranda_tree
+    views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
+  - object: lemon
+    views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
+  - object: lightbulb_led
+    views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
+  - object: marble_bust_01
+    views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
+  - object: metal_stool_01
+    views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
+  - object: metal_tool_chest
+    views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
+  - object: mid_century_lounge_chair
+    views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
+  - object: old_tyre
+    views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
+  - object: pastic_torch_6v
+    views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
+  - object: planter_box_01
+    views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
+  - object: pliers
+    views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
+  - object: portable_generator
+    views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
+  - object: potted_plant_01
+    views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
+  - object: potted_plant_04
+    views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
+  - object: rock_09
+    views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
+  - object: rusted_spade_01
+    views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
+  - object: seadogs_compass
+    views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
+  - object: security_camera_01
+    views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
+  - object: seeding_tray_01
+    views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
+  - object: stone_01
+    views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
   - object: throw_pillows_01
     views: [view_00]
-  - object: roof_vent_01
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
+  - object: tree_small_02
     views: [view_00]
-  - object: square_sign_wall_mounted
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
+  - object: vintage_day_bed
     views: [view_00]
-  - object: medieval_blocks_01
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
+  - object: vintage_flashlight
     views: [view_00]
-  - object: electric_kettle_01
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
+  - object: vintage_lighter
     views: [view_00]
-  - object: brass_vase_02
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
+  - object: vintage_microwave
     views: [view_00]
-  - object: antique_camera
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
+  - object: wall_clock
     views: [view_00]
-  - object: oil_drum_01
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
+  - object: wicker_basket_02
     views: [view_00]
-  - object: modern_ceiling_lamp_01
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
+  - object: wooden_candlestick
     views: [view_00]
-  - object: simple_wooden_chair
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
+  - object: wooden_crate_02
     views: [view_00]
-  - object: small_wood_bucket
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
+  - object: yellow_onion
     views: [view_00]
-  - object: red_wine_cask
-    views: [view_00]
-  - object: green_rough_planks
-    views: [view_00]
-  - object: traffic_barrel_01
-    views: [view_00]
-  - object: antique_pocket_watch_01
-    views: [view_00]
-  - object: ceramic_vase_01
-    views: [view_00]
-  - object: round_wooden_table_01
-    views: [view_00]
-  - object: alarm_clock_01
-    views: [view_00]
-  - object: fire_extinguisher_01
-    views: [view_00]
-  - object: gas_tank_01
-    views: [view_00]
-  - object: metal_bucket_01
-    views: [view_00]
-  - object: cardboard_box_01
-    views: [view_00]
-  - object: fancy_picture_frame_01
-    views: [view_00]
-  - object: green_metal_chair
-    views: [view_00]
-  - object: painted_wooden_cabinet_01
-    views: [view_00]
-  - object: steel_frame_shelves_01
-    views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]

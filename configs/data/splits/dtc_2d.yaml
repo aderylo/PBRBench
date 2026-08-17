@@ -4,129 +4,193 @@ source: dtc
 samples:
   - object: Advil
     views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
   - object: AirDuster
     views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
   - object: Airplane_B01178HTKM_Yellow
     views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
   - object: Ariel
     views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
   - object: Axe_B0BSCG4XZ5_BrownWoodHandle
     views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
   - object: Baking_D58B1ECE_Powder
     views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
   - object: Bathroom_I1_50281856_BambooBox
     views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
   - object: BasketPlasticRectangular
     views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
   - object: Basketball_B0009KF59W_Brown
     views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
   - object: BirdHouse_A79823645_BearWithLogStump
     views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
   - object: Blistex
     views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
   - object: Block_B007GE75HY_RedBlue
     views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
   - object: Book_0262035618_DeepLearning_2
     views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
   - object: Bottle_Toy_SqueezeFancyTomatoKetchup_C1F9906C
     views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
   - object: Bowl_B07WG43L2D_Blue_TU
     views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
   - object: Box_Toy_465EFA08_FarmFreshButter
     views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
   - object: Calculator_B003822IRA_BrushedNickel_1
     views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
   - object: Can_Toy_B00146LV5C_ChickenNoodleSoup
     views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
   - object: Candle_B07HHXZ2G3_GreenCabbage1
     views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
   - object: Car_38330969_Toy
     views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
   - object: Carton_Toy_0E9D95Af_OrangeJuice_1
     views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
   - object: CashierCounterStand
     views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
   - object: Charging_Station
     views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
   - object: Clorox
     views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
   - object: Container_Toy_GratedParmesanCheese_C87B6E98
     views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
   - object: Cup_B094NQH2YM_BlackGold
     views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
   - object: Cutting_Board_B0006LMVSM_Large
     views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
   - object: Dish_B07ZK7JG6D_Blue
     views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
   - object: Dumbbell_B0045HLAMQ_Blue
     views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
   - object: Dutch_Oven_B00I0NP12M_Palm
     views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
   - object: FakeFruit_1028_Pineapple_1
     views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
   - object: Figurine_B018RVBJLW_Bull
     views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
   - object: Flask
     views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
   - object: Football_B001CEMIXK_Brown
     views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
   - object: Gargoyle_B000CCOMBY_Griffin
     views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
   - object: Gravestone_B000Q7Q1RI_HoodedSkeleton
     views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
   - object: Hammer_B00018ADXA_Wood
     views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
   - object: Handsoap
     views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
   - object: Hawaiian_Tropic
     views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
   - object: Key_B00XZ9O69E_Transponder
     views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
   - object: Keyboard_B092CHWH1D_SilverBlack
     views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
   - object: Knife_B001U4Y4UM_WhiteUtility
     views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
   - object: Mallard_B00CJG52RE_DarkBrown
     views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
   - object: Marker_B00006IFIA_Purple_TU
     views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
   - object: Mortar
     views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
   - object: Mouse_B016QCPNUW_BlackTrackball
     views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
   - object: Neosporin
     views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
   - object: Office_Eraser_04F879CB_GreyWhiteDryEraser
     views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
   - object: Pan_B00I2ZILEW_Skillet
     views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
   - object: Planter_B0C4G81ZPF_Cat
     views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
   - object: Pistol_B0BGXFY3K1_OrangeGrey_2
     views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
   - object: Pottery_B075SX9GVK_White
     views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
   - object: Remote
     views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
   - object: Salt_B0C42X8CDT_DarkBlue
     views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
   - object: Shampoo_B000H0Y4NW_PaulMitchell
     views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
   - object: Shaver_B08K8ZYH8P_BlackSilver
     views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
   - object: Shoe_A76726869_WhiteSize8_2_TU
     views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
   - object: Spatula_B0CXJ6L8V1_NewAdventure
     views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
   - object: Speaker_B005LW42MY_BlackOrange
     views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
   - object: Spoon_B0013NB70A_Blue
     views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
   - object: TeaPot_B01252SB56_AirBalloonMotif_TU
     views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
   - object: Vase_B002MH255W_White
     views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
   - object: Volleyball_B01B7VJ0UQ_StainedGlass
     views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]
   - object: WoodBlocks_B00FIX22YQ_BlueArch
     views: [view_00]
+    lights: [cobblestone_parish_road, ferndale_studio_11, newman_cafeteria, suburban_garden]

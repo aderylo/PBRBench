@@ -1,7 +1,24 @@
 _target_: src.data.pbr_estimation_dataset_2d.MultiSourcePBREstimationDataset2D
-sources:
-  dtc: data/2d_eval/dtc
-  texverse: data/2d_eval/texverse
-  objaverse: data/2d_eval/objaverse
-  polyhaven: data/2d_eval/polyhaven
+_recursive_: false
+datasets:
+  - _target_: src.data.pbr_estimation_dataset_2d.PBREstimationDataset2D
+    data_dir: data/2d_eval/dtc
+    split_file: configs/data/splits/dtc_2d.yaml
+    source: dtc
+    limit: null
+  - _target_: src.data.pbr_estimation_dataset_2d.PBREstimationDataset2D
+    data_dir: data/2d_eval/texverse
+    split_file: configs/data/splits/texverse_2d.yaml
+    source: texverse
+    limit: null
+  - _target_: src.data.pbr_estimation_dataset_2d.PBREstimationDataset2D
+    data_dir: data/2d_eval/objaverse
+    split_file: configs/data/splits/objaverse_2d.yaml
+    source: objaverse
+    limit: null
+  - _target_: src.data.pbr_estimation_dataset_2d.PBREstimationDataset2D
+    data_dir: data/2d_eval/polyhaven
+    split_file: configs/data/splits/polyhaven_2d.yaml
+    source: polyhaven
+    limit: null
 limit: null
