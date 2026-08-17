@@ -410,20 +410,14 @@ class IDArb2D(BaseMaterialEstimator2D):
             )
             batch_results = self._predict_batch(batch, generator)
 
-            for item, (albedo, roughness, metallic, normal) in zip(
+            for item, (albedo, roughness, metallic, _) in zip(
                 batch, batch_results
             ):
                 sample = item["sample"]
-                artifacts: dict[str, Any] = {}
-                if normal is not None:
-                    artifacts["normal"] = normal
-                if sample.mask is not None:
-                    artifacts["mask"] = sample.mask
-
                 predictions[sample.sample_id] = Prediction2D(
                     albedo=albedo,
                     roughness=roughness,
                     metallic=metallic,
-                    artifacts=artifacts,
                 ).save(save_dir=output_dir / sample.sample_id, mark_success=True)
         return predictions
+

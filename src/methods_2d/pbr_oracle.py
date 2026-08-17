@@ -214,10 +214,6 @@ class PBROracle2D(BaseMaterialEstimator2D):
                     albedo=Image.fromarray(estimate.albedo_srgb_u8, mode="RGB"),
                     roughness=Image.fromarray(roughness, mode="L"),
                     metallic=Image.fromarray(metallic, mode="L"),
-                    artifacts={
-                        "coverage": Image.fromarray(coverage_u8, mode="L"),
-                        "confidence": Image.fromarray(confidence_u8, mode="L"),
-                        "pbr_oracle_metadata": metadata_path,
-                    },
                 ).save(save_dir=output_dir / sample.sample_id, mark_success=True)
+
         return outputs

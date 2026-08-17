@@ -221,34 +221,13 @@ class NeuralLightRig2D(BaseMaterialEstimator2D):
             albedo_rgb = img_albedo.convert("RGB")
             roughness = img_rm.getchannel("G")
             metallic = img_rm.getchannel("B")
-            normal_rgb = img_normal.convert("RGB")
-            mask_a = img_in_rgba.getchannel("A")
-            ref_rgb = img_ref.convert("RGB")
-
-            # Composite 5-panel output (Input, Ref, RM, Albedo, Normal)
-            img_out = Image.new(
-                "RGBA", (self.input_resolution * 5, self.input_resolution)
-            )
-            img_out.paste(img_in_rgba, (0, 0))
-            img_out.paste(
-                img_ref.resize((self.input_resolution, self.input_resolution)),
-                (self.input_resolution, 0),
-            )
-            img_out.paste(img_rm, (self.input_resolution * 2, 0))
-            img_out.paste(img_albedo, (self.input_resolution * 3, 0))
-            img_out.paste(img_normal, (self.input_resolution * 4, 0))
 
             outputs[sample.sample_id] = Prediction2D(
                 albedo=albedo_rgb,
                 roughness=roughness,
                 metallic=metallic,
-                artifacts={
-                    "normal": normal_rgb,
-                    "mask": mask_a,
-                    "ref": ref_rgb,
-                    "combined": img_out,
-                },
             ).save(save_dir=sample_dir, mark_success=True)
+
 
         # Offload Stage II model back to CPU after batch completion
         self.recon_model.to("cpu")

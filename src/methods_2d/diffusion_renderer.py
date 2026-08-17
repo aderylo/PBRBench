@@ -215,12 +215,11 @@ class DiffusionRenderer2D(BaseMaterialEstimator2D):
                 )
                 metallic_img = Image.fromarray(dummy_m)
 
-            artifacts = {"normal": normal_img} if normal_img is not None else None
             predictions[sample.sample_id] = Prediction2D(
                 albedo=albedo_img,
                 roughness=roughness_img,
                 metallic=metallic_img,
-                artifacts=artifacts,
             ).save(save_dir=sample_output_dir, mark_success=True)
+
 
         return predictions
