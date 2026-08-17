@@ -1,0 +1,11 @@
+bitsandbytes
+pytorch-lightning
+decord
+nerfacc
+torch_efficient_distloss
+PyMCubes
+onnxruntime
+rembg
+tensorboard
+boto3
+trimesh
