@@ -1,0 +1,8 @@
+name: material_anything
+_target_: src.methods_2d.material_anything.MaterialAnything2D
+repo_root: third_party/MaterialAnything
+image2materials_model: .weights/material_anything/material_estimator
+device: cuda:0
+image_size: 768
+num_inference_steps: 50
+seed: 0
