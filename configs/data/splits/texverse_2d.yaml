@@ -1,0 +1,132 @@
+name: texverse_2d
+source: texverse
+
+samples:
+  - object: 000054a8d92d4c80828161fbb235d141
+    views: [view_00]
+  - object: 0000ae10c2a24d5d90807593d6997f6f
+    views: [view_00]
+  - object: 0004b4e0caa34bd8b532f6d5be1e47b1
+    views: [view_00]
+  - object: 0004f674263f4e33abf25e3b7b5a9a1a
+    views: [view_00]
+  - object: 00075933906340fd92b5f6ff08f3b635
+    views: [view_00]
+  - object: 0007692e07b848f99d75e1ea8148816a
+    views: [view_00]
+  - object: 0007783c95f348d2ba0fc8d3be618afc
+    views: [view_00]
+  - object: 0007c141ddf449ff81c41a3b5f947768
+    views: [view_00]
+  - object: 0008aa0f0e984247a061d1bc1c200c44
+    views: [view_00]
+  - object: 0008fcc64bc0438ba591dcaa42e63ee1
+    views: [view_00]
+  - object: 0009695324334947941b667b5c1b4aa1
+    views: [view_00]
+  - object: 000acc24bcdb47c89ddf2551d6d6c87a
+    views: [view_00]
+  - object: 000bc33c1a0d4b36acab1e18de6617e1
+    views: [view_00]
+  - object: 000c04a6a06d458f8e25ed8ed448b1ef
+    views: [view_00]
+  - object: 000cccfaa9ce455b9ca93b37266ddc01
+    views: [view_00]
+  - object: 000d8f2e77714be8a75c5b9ad0b965e0
+    views: [view_00]
+  - object: 000f48adc7f74d34920c2a737ad612c7
+    views: [view_00]
+  - object: 0010851e247b475e9b6f72bd2409b3e9
+    views: [view_00]
+  - object: 0010a35d806a470b8b01b3496b7dc631
+    views: [view_00]
+  - object: 0010ab723e554864a1de2e46ba411e4a
+    views: [view_00]
+  - object: 0010abfbb31349a08365672f9543f00f
+    views: [view_00]
+  - object: 0011840fd51e4c8c844f4afe47d2df5e
+    views: [view_00]
+  - object: 0011b83d19b34304b285ebc35df86a55
+    views: [view_00]
+  - object: 0012d8933de442f38c5091511273fff1
+    views: [view_00]
+  - object: 0013c6a432444c9e90c4d8bfa02caa2e
+    views: [view_00]
+  - object: 0017d8a5760440f78465a13299bd7760
+    views: [view_00]
+  - object: 00192b5a4a3249c79141c8dccaad2947
+    views: [view_00]
+  - object: 001a39a65b53467e9e337c8e2a411e62
+    views: [view_00]
+  - object: 001ad2a25ef047bdade0e70c3afd76f5
+    views: [view_00]
+  - object: 001ad83b3fda4b18aea3c7362639aa54
+    views: [view_00]
+  - object: 001bec4277414a62bb8ad9b2a1a7abcb
+    views: [view_00]
+  - object: 001cdc4048c34259a38aca6c0d3c4b02
+    views: [view_00]
+  - object: 001dab4984ab412ca733a713a8b5b6bd
+    views: [view_00]
+  - object: 001dde36fc0e4104b485b4d78b851913
+    views: [view_00]
+  - object: 001df836dd9e46edb196a975e59bb63a
+    views: [view_00]
+  - object: 001f6da23eda4c289e21b9320d61d936
+    views: [view_00]
+  - object: 00232ec462b04199b0d6a3a319b10ec1
+    views: [view_00]
+  - object: 002538e0127644bebb91da5bc87a1e83
+    views: [view_00]
+  - object: 0025975d9639467bbf59b0de3467d38b
+    views: [view_00]
+  - object: 002700fa4bb84fceb866c1cb2d19d2dd
+    views: [view_00]
+  - object: 00285f655ed14953a8ea14d4637b7d33
+    views: [view_00]
+  - object: 0028b26d516645169d298304390521a6
+    views: [view_00]
+  - object: 002c04f44c7d43869fd97442df5082d8
+    views: [view_00]
+  - object: 0030d8b91c414b619f2ca3ae79e7a080
+    views: [view_00]
+  - object: 0031f1dd81b64bca976e70b0d268ae5e
+    views: [view_00]
+  - object: 003215849a81440cb7207291ac3f2bab
+    views: [view_00]
+  - object: 00334e239ad742e79812faa9cdd5ddf6
+    views: [view_00]
+  - object: 0037cefd52814ebaa2f40ab9d22c72b9
+    views: [view_00]
+  - object: 0037f2dcfc584749a73a6b21175bec32
+    views: [view_00]
+  - object: 0038e46c670b4541beebda75948242c3
+    views: [view_00]
+  - object: 00393c5304f9491db9917390dbf7f9c2
+    views: [view_00]
+  - object: 003a12574e764c8bb2fc6611481298cb
+    views: [view_00]
+  - object: 003c37113a904533bfb4d892e397299f
+    views: [view_00]
+  - object: 003d9d5396cb487e8f42df230ae0c220
+    views: [view_00]
+  - object: 003eed43e9594efc82aa0e76e5652b55
+    views: [view_00]
+  - object: 003f71949ec340a387526c931d4442f6
+    views: [view_00]
+  - object: 0040171643a64f138b14b79815def683
+    views: [view_00]
+  - object: 00409eaee61f4a578b70682b6552adf4
+    views: [view_00]
+  - object: 0042346f4d9a4ea9a322ce9b5faa091d
+    views: [view_00]
+  - object: 004261560f7944e5abb61a68cfb59ada
+    views: [view_00]
+  - object: 0042fc3936c549e2924b975bd5d8568c
+    views: [view_00]
+  - object: 0043bab2f2d94bc39961527fe24b0cb4
+    views: [view_00]
+  - object: 0044ade7b6344c009405c43c110bb8fa
+    views: [view_00]
+  - object: 0045ba8df17a4ea282bab821ff588659
+    views: [view_00]

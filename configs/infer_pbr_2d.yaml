@@ -3,6 +3,7 @@ defaults:
   - method_2d: supermat
   - _self_
 
+
 output_dir: outputs/pbr_2d/${method_2d.name}
 
 runtime:

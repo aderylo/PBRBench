@@ -154,7 +154,6 @@ class SuperMat2D(BaseMaterialEstimator2D):
             unit="sample",
         ):
             sample_dir = output_dir / sample.sample_id
-            sample_dir.mkdir(parents=True, exist_ok=True)
 
             image_tensor = upstream_utils.load_rgba_image_as_rgb_tensor(
                 image_path=sample.rgb,
@@ -180,11 +179,10 @@ class SuperMat2D(BaseMaterialEstimator2D):
             roughness_img = Image.fromarray(roughness_np)
             metallic_img = Image.fromarray(metallic_np)
 
-            outputs[sample.sample_id] = self.save_prediction(
-                sample_dir=sample_dir,
+            outputs[sample.sample_id] = Prediction2D(
                 albedo=albedo_img,
                 roughness=roughness_img,
                 metallic=metallic_img,
-            )
+            ).save(save_dir=sample_dir, mark_success=True)
 
         return outputs

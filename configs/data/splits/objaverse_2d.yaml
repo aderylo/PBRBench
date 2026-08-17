@@ -1,0 +1,132 @@
+name: objaverse_2d
+source: objaverse
+
+samples:
+  - object: 92d1cbc20e8c440aad9be60586d5efa6
+    views: [view_00]
+  - object: 9f9dae0f8643433ababb03668088b268
+    views: [view_00]
+  - object: 1217b74ad5fb417b999fcd116bb22089
+    views: [view_00]
+  - object: 6627d1541aa647b09d0cbdda4dd1f586
+    views: [view_00]
+  - object: c1987ac31310458794ffabcbd8bc7a49
+    views: [view_00]
+  - object: b9470c4a38384ce49d915a6eb7cda156
+    views: [view_00]
+  - object: 9b972282f52049218350f79e12171d95
+    views: [view_00]
+  - object: 729bd5e2368b4ffa871d40c728c8c0a5
+    views: [view_00]
+  - object: b3854b436f3c4c3f90296d97d4f276b8
+    views: [view_00]
+  - object: 86f044c4f1404d02bc4ecdf56abaa48a
+    views: [view_00]
+  - object: dc0bb314a28d40bda1af9de1b012db8f
+    views: [view_00]
+  - object: 553f342ce4334f8d8cdc934382587235
+    views: [view_00]
+  - object: c091d4f516034936ab3303e8958a5cb2
+    views: [view_00]
+  - object: 3a9845ac805745dcb7358b4cdbeea520
+    views: [view_00]
+  - object: 6cdfadc8f2af464282bea31976ea4870
+    views: [view_00]
+  - object: 271ff795502f40b6acc302d3edff86ad
+    views: [view_00]
+  - object: e7a4a2bf00fc47979d9ba9e23d09a321
+    views: [view_00]
+  - object: 61d5a28260744d8e8c4ba24d5d33db77
+    views: [view_00]
+  - object: c9a4322a3eb24081b040c960f047c3a8
+    views: [view_00]
+  - object: e392dabaa1ca4bb89efe9a7cf8b97cce
+    views: [view_00]
+  - object: 3c1bae0687144f51861a8a52be036c2b
+    views: [view_00]
+  - object: 75f3c537d0df4766b4f7758e5c783683
+    views: [view_00]
+  - object: 279435f543a84601986b21b6a2bb93b1
+    views: [view_00]
+  - object: 20c740ac137c4e22ba31ea6b5cf9e549
+    views: [view_00]
+  - object: 7dc5474a8cfa4cd891cbc9c3cad3e492
+    views: [view_00]
+  - object: b19f072a65c847038a9b0bfdf5945452
+    views: [view_00]
+  - object: d23ae3a418f84184ae5fd4b69ca2858c
+    views: [view_00]
+  - object: 2837acd37a2e46bfa34f45fd5f00a42e
+    views: [view_00]
+  - object: 85d180d7fb04481687126740604ba5f2
+    views: [view_00]
+  - object: a2df2dc40f7045a0825fd820284406f3
+    views: [view_00]
+  - object: 76c03123386b43d28893ac6a787ca06a
+    views: [view_00]
+  - object: e619e1b84af14194ac739712de4330b2
+    views: [view_00]
+  - object: efbe1577816044f297837ad1d218e7ab
+    views: [view_00]
+  - object: 4ec412fc7e0648e0a7a4554143185c33
+    views: [view_00]
+  - object: cecc9eedb5cc47c088f34fd5db85fc30
+    views: [view_00]
+  - object: a65aa0f95de340b29fdadd2c8420ad68
+    views: [view_00]
+  - object: c6f2569460b745f790a0e9abc263a28d
+    views: [view_00]
+  - object: 66c925685f0b4089bf931c40b75556ee
+    views: [view_00]
+  - object: 1d38f581286c4e0a8e143f9b43b60b8b
+    views: [view_00]
+  - object: cd0a18e6ce8e4b49b0e20e1a7c0e07f4
+    views: [view_00]
+  - object: 070cac6e82a94b07857a28d9bf0c65de
+    views: [view_00]
+  - object: 26c2708a6cfd4ef48cd8225251583796
+    views: [view_00]
+  - object: 9972fdea40bf48438ac2606b359ddd01
+    views: [view_00]
+  - object: fc883275cc8149f5954ed52efa6739c9
+    views: [view_00]
+  - object: eac6a1b0752e4e67b9baacecf32f589f
+    views: [view_00]
+  - object: 01ab7567885e429db6839155618a4b0c
+    views: [view_00]
+  - object: e6ae83e1d03f45df88ed7af6e6a68914
+    views: [view_00]
+  - object: bbccb58ed815443697cf744951a5e842
+    views: [view_00]
+  - object: 7fe8ef9f5e724b37a4e03ec9c08eb0c2
+    views: [view_00]
+  - object: 5bada036ebfe451ab7b01ae723506e15
+    views: [view_00]
+  - object: 78f5cdf452f54ec08866e0d87e584de6
+    views: [view_00]
+  - object: 1ebe77bc899e45ffab5a1705f2d9c156
+    views: [view_00]
+  - object: 4737581b6cc5483fb6a07ac95001feb8
+    views: [view_00]
+  - object: d5dd2f43432445048ec953c841c1159d
+    views: [view_00]
+  - object: 57cf03a8d2ce428081914966d45bd004
+    views: [view_00]
+  - object: 5b5a102914d940099b89dd787f2a6ef8
+    views: [view_00]
+  - object: 3abee9e4162b433c941698240cd2559d
+    views: [view_00]
+  - object: cc03666eb6b4406b8865385dc9c3046a
+    views: [view_00]
+  - object: a7b4b0ddfad84606b00e05cd8855d435
+    views: [view_00]
+  - object: 260ed137c0964b4988245535bff63036
+    views: [view_00]
+  - object: 24521cd09bf54aafbd1dce8d8c731293
+    views: [view_00]
+  - object: 7795c6a5fa144bfcb1c33041c71eab00
+    views: [view_00]
+  - object: c0a9b4a721f842fd8e78beb903bd017c
+    views: [view_00]
+  - object: bb2ca947d2d648f385079f4f93c177a8
+    views: [view_00]

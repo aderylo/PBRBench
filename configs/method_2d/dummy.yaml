@@ -1,0 +1,3 @@
+name: dummy
+_target_: src.methods_2d.dummy.Dummy2D
+repo_root: .

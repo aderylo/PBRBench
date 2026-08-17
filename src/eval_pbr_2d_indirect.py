@@ -74,8 +74,6 @@ class IndirectEvaluationPayload:
 
     evaluation: str
     predictions_dir: str
-    dataset_name: str
-    dataset_root: str
     target_envmaps: list[str]
     counts: IndirectEvaluationCounts
     aggregate: dict[str, float]
@@ -216,13 +214,10 @@ def build_job(
 
 def evaluate(config: DictConfig) -> IndirectEvaluationPayload:
     """Relight registered predictions and evaluate their rendered appearance."""
-    predictions_dir = project_path(config.predictions_dir)
-    dataset_overrides = {}
-    if hasattr(config.data, "root") and config.data.root:
-        dataset_overrides["root"] = project_path(config.data.root)
     log.info("Instantiating dataset <%s>", config.data._target_)
-    dataset: PBREstimationDataset2D = instantiate(config.data, **dataset_overrides)
+    dataset: PBREstimationDataset2D = instantiate(config.data)
     samples = list(dataset)
+    predictions_dir = project_path(config.predictions_dir)
     predictions = scan_predictions(predictions_dir, CHANNELS)
     log.info(
         "Found %d prediction directories for %d requested dataset samples",
@@ -337,8 +332,6 @@ def evaluate(config: DictConfig) -> IndirectEvaluationPayload:
     payload = IndirectEvaluationPayload(
         evaluation="pbr_2d_indirect",
         predictions_dir=str(predictions_dir),
-        dataset_name=dataset.name,
-        dataset_root=str(dataset.root),
         target_envmaps=[target["id"] for target in job["targets"]],
         counts=IndirectEvaluationCounts(
             requested=len(samples),

@@ -76,8 +76,6 @@ class DirectEvaluationPayload:
 
     evaluation: str
     predictions_dir: str
-    dataset_name: str
-    dataset_root: str
     counts: EvaluationCounts
     aggregate: dict[str, dict[str, float]]
     statistics: dict[str, dict[str, dict[str, float | int]]]
@@ -179,10 +177,7 @@ def evaluate(config: DictConfig) -> DirectEvaluationPayload:
     """Evaluate prediction artifacts registered in the configured 2D dataset."""
     predictions_dir = project_path(config.predictions_dir)
     log.info("Instantiating dataset <%s>", config.data._target_)
-    dataset_overrides = {}
-    if hasattr(config.data, "root") and config.data.root:
-        dataset_overrides["root"] = project_path(config.data.root)
-    dataset = instantiate(config.data, **dataset_overrides)
+    dataset = instantiate(config.data)
     samples = {sample.sample_id: sample for sample in dataset}
     predictions = scan_predictions(predictions_dir, CHANNELS)
 
@@ -248,8 +243,6 @@ def evaluate(config: DictConfig) -> DirectEvaluationPayload:
     payload = DirectEvaluationPayload(
         evaluation="pbr_2d_direct",
         predictions_dir=str(predictions_dir),
-        dataset_name=dataset.name,
-        dataset_root=str(dataset.root),
         counts=EvaluationCounts(
             requested=len(samples),
             discovered_predictions=len(predictions),

@@ -2,71 +2,59 @@
 
 from __future__ import annotations
 
-import shutil
 from abc import ABC, abstractmethod
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from PIL import Image
-
 from src.data.pbr_estimation_dataset_2d import PBREstimationSample2D
+from src.utils.image import save_image
 
 
-@dataclass(frozen=True)
+@dataclass
 class Prediction2D:
-    """Predicted 2D material maps for one sample."""
+    """Predicted 2D material maps for one sample.
 
-    albedo: Path
-    roughness: Path
-    metallic: Path
-    normal: Path | None = None
-    artifacts: Mapping[str, Path] = field(default_factory=dict)
+    Channels hold raw inputs (images/tensors/paths) until :meth:`save` is
+    called, which replaces them with the paths of the saved files.
+    """
+
+    albedo: ImageInput
+    roughness: ImageInput
+    metallic: ImageInput
+    artifacts: Mapping[str, ImageInput] = field(default_factory=dict)
+
+    def save(self, save_dir: Path, *, mark_success: bool = True) -> Prediction2D:
+        """Save the predicted channels into ``save_dir`` and return self."""
+        save_dir.mkdir(parents=True, exist_ok=True)
+
+        self.albedo = save_image(self.albedo, save_dir / "albedo.png")
+        self.roughness = save_image(self.roughness, save_dir / "roughness.png")
+        self.metallic = save_image(self.metallic, save_dir / "metallic.png")
+
+        saved_artifacts: dict[str, Path] = {}
+        for name, art_input in self.artifacts.items():
+            if name in ("albedo", "roughness", "metallic"):
+                continue
+            ext = (
+                ".png"
+                if not isinstance(art_input, (str, Path))
+                or not Path(art_input).suffix
+                else Path(art_input).suffix
+            )
+            saved_artifacts[name] = save_image(
+                art_input, save_dir / f"{name}{ext}"
+            )
+        self.artifacts = saved_artifacts
+
+        if mark_success:
+            (save_dir / ".SUCCESS").touch()
+
+        return self
 
 
 ImageInput = Any  # Image.Image | np.ndarray | torch.Tensor | Path
-
-
-def save_image_artifact(image_input: ImageInput, target_path: Path) -> Path:
-    """Save PIL Image, numpy array, torch Tensor, or existing file Path to target_path."""
-    if isinstance(image_input, (str, Path)):
-        src_path = Path(image_input)
-        if src_path.resolve() != target_path.resolve():
-            target_path.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(src_path, target_path)
-        return target_path
-
-    target_path.parent.mkdir(parents=True, exist_ok=True)
-
-    if hasattr(image_input, "detach"):  # torch.Tensor
-        image_input = image_input.detach().cpu().numpy()
-
-    # If image is numpy array
-    if hasattr(image_input, "ndim") and hasattr(image_input, "shape"):
-        import numpy as np
-
-        if (
-            image_input.ndim == 3
-            and image_input.shape[0] in (1, 3, 4)
-            and image_input.shape[0] < image_input.shape[1]
-        ):
-            # Convert CHW -> HWC
-            image_input = image_input.transpose(1, 2, 0)
-        if image_input.dtype != np.uint8:
-            if image_input.max() <= 1.0:
-                image_input = (image_input * 255.0).clip(0, 255).astype(np.uint8)
-            else:
-                image_input = image_input.clip(0, 255).astype(np.uint8)
-        if image_input.ndim == 3 and image_input.shape[2] == 1:
-            image_input = image_input.squeeze(2)
-        image_input = Image.fromarray(image_input)
-
-    if isinstance(image_input, Image.Image):
-        image_input.save(target_path)
-        return target_path
-
-    raise TypeError(f"Unsupported image type for saving: {type(image_input)}")
 
 
 class BaseMaterialEstimator2D(ABC):
@@ -106,56 +94,6 @@ class BaseMaterialEstimator2D(ABC):
         if not path.is_file():
             raise FileNotFoundError(f"Missing {description}: {path}")
         return path
-
-    @staticmethod
-    def save_prediction(
-        sample_dir: Path,
-        albedo: ImageInput,
-        roughness: ImageInput,
-        metallic: ImageInput,
-        normal: ImageInput | None = None,
-        artifacts: Mapping[str, ImageInput] | None = None,
-    ) -> Prediction2D:
-        """Standardized helper to save predicted material channels for a sample and return Prediction2D."""
-        sample_dir.mkdir(parents=True, exist_ok=True)
-
-        saved_albedo = save_image_artifact(albedo, sample_dir / "albedo.png")
-        saved_roughness = save_image_artifact(roughness, sample_dir / "roughness.png")
-        saved_metallic = save_image_artifact(metallic, sample_dir / "metallic.png")
-
-        saved_normal = None
-        if normal is not None:
-            saved_normal = save_image_artifact(normal, sample_dir / "normal.png")
-
-        saved_artifacts: dict[str, Path] = {
-            "albedo": saved_albedo,
-            "roughness": saved_roughness,
-            "metallic": saved_metallic,
-        }
-        if saved_normal is not None:
-            saved_artifacts["normal"] = saved_normal
-
-        if artifacts:
-            for name, art_input in artifacts.items():
-                if name in ("albedo", "roughness", "metallic", "normal"):
-                    continue
-                ext = (
-                    ".png"
-                    if not isinstance(art_input, (str, Path))
-                    or not Path(art_input).suffix
-                    else Path(art_input).suffix
-                )
-                saved_artifacts[name] = save_image_artifact(
-                    art_input, sample_dir / f"{name}{ext}"
-                )
-
-        return Prediction2D(
-            albedo=saved_albedo,
-            roughness=saved_roughness,
-            metallic=saved_metallic,
-            normal=saved_normal,
-            artifacts=saved_artifacts,
-        )
 
     @abstractmethod
     def predict(

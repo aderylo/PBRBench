@@ -204,7 +204,6 @@ class NeuralLightRig2D(BaseMaterialEstimator2D):
             unit="sample",
         ):
             sample_dir = output_dir / sample.sample_id
-            sample_dir.mkdir(parents=True, exist_ok=True)
 
             img_in_rgba = Image.open(sample.rgb).resize(
                 (self.input_resolution, self.input_resolution)
@@ -239,18 +238,17 @@ class NeuralLightRig2D(BaseMaterialEstimator2D):
             img_out.paste(img_albedo, (self.input_resolution * 3, 0))
             img_out.paste(img_normal, (self.input_resolution * 4, 0))
 
-            outputs[sample.sample_id] = self.save_prediction(
-                sample_dir=sample_dir,
+            outputs[sample.sample_id] = Prediction2D(
                 albedo=albedo_rgb,
                 roughness=roughness,
                 metallic=metallic,
-                normal=normal_rgb,
                 artifacts={
+                    "normal": normal_rgb,
                     "mask": mask_a,
                     "ref": ref_rgb,
                     "combined": img_out,
                 },
-            )
+            ).save(save_dir=sample_dir, mark_success=True)
 
         # Offload Stage II model back to CPU after batch completion
         self.recon_model.to("cpu")

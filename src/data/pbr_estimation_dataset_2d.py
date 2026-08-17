@@ -8,6 +8,35 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+import yaml
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
+
+def _resolve_path(path: str | Path) -> Path:
+    p = Path(path)
+    return p.resolve() if p.is_absolute() else (PROJECT_ROOT / p).resolve()
+
+
+def _parse_split(path: Path) -> dict[str, set[str] | None]:
+    payload = yaml.safe_load(path.read_text()) or {}
+    items = (
+        payload
+        if isinstance(payload, list)
+        else (payload.get("samples") or payload.get("objects") or [])
+    )
+    specs: dict[str, set[str] | None] = {}
+    for item in items:
+        if isinstance(item, dict):
+            obj = item.get("object") or item.get("id")
+            if not obj:
+                continue
+            views = item.get("views")
+            specs[str(obj)] = {str(v) for v in views} if views else None
+        else:
+            specs[str(item)] = None
+    return specs
+
 
 @dataclass(frozen=True)
 class PBREstimationSample2D:
@@ -33,44 +62,41 @@ class PBREstimationDataset2D(Sequence[PBREstimationSample2D]):
 
     def __init__(
         self,
-        root: str | Path,
-        *,
-        name: str = "pbr_estimation_2d",
-        source: str | None = None,
-        object_ids: Sequence[str] | None = None,
-        view_ids: Sequence[str] | None = None,
-        light_ids: Sequence[str] | None = None,
-        max_samples: int | None = None,
-        validate_files: bool = True,
+        data_dir: str | Path,
+        split_file: str | Path | None = None,
+        limit: int | None = None,
+        source: str = "",
     ) -> None:
-        self.name = name
-        self.source = source or name
-        self.root = Path(root).resolve()
-        if not self.root.is_dir():
-            raise FileNotFoundError(f"2D dataset root not found: {self.root}")
-        if max_samples is not None and max_samples < 0:
-            raise ValueError("max_samples must be non-negative or null")
+        self.data_dir = _resolve_path(data_dir)
+        self.split_file = _resolve_path(split_file) if split_file else None
+        self.source = source or self.data_dir.name
+        self.limit = limit
+
+        if not self.data_dir.is_dir():
+            raise FileNotFoundError(f"2D dataset directory not found: {self.data_dir}")
+        if self.limit is not None and self.limit < 0:
+            raise ValueError("limit must be non-negative or null")
 
         self._sample_map: dict[str, PBREstimationSample2D] = {}
-        if max_samples == 0:
+        if self.limit == 0:
             self._samples = ()
             return
 
-        selected_objects = set(object_ids) if object_ids is not None else None
-        selected_views = set(view_ids) if view_ids is not None else None
-        selected_lights = set(light_ids) if light_ids is not None else None
+        allowed = _parse_split(self.split_file) if self.split_file else None
         samples: list[PBREstimationSample2D] = []
 
-        for metadata_path in sorted(self.root.glob("*/view_*/metadata.json")):
+        for metadata_path in sorted(self.data_dir.glob("*/view_*/metadata.json")):
             view_dir = metadata_path.parent
             object_id = view_dir.parent.name
             view_id = view_dir.name
             self._validate_identifier(object_id, "object_id", metadata_path)
             self._validate_identifier(view_id, "view_id", metadata_path)
-            if selected_objects is not None and object_id not in selected_objects:
-                continue
-            if selected_views is not None and view_id not in selected_views:
-                continue
+            if allowed is not None:
+                if object_id not in allowed:
+                    continue
+                allowed_views = allowed[object_id]
+                if allowed_views is not None and view_id not in allowed_views:
+                    continue
 
             try:
                 metadata = json.loads(metadata_path.read_text())
@@ -87,15 +113,9 @@ class PBREstimationDataset2D(Sequence[PBREstimationSample2D]):
             for rgb_path in rgb_paths:
                 light_id = rgb_path.stem
                 self._validate_identifier(light_id, "light_id", rgb_path)
-                if selected_lights is not None and light_id not in selected_lights:
-                    continue
                 sample_id = f"{self.source}__{object_id}__{view_id}__{light_id}"
                 if sample_id in self._sample_map:
                     raise ValueError(f"Duplicate sample_id: {sample_id}")
-                if validate_files and not rgb_path.is_file():
-                    raise FileNotFoundError(
-                        f"Missing input image for {sample_id}: {rgb_path}"
-                    )
 
                 sample = PBREstimationSample2D(
                     sample_id=sample_id,
@@ -114,7 +134,7 @@ class PBREstimationDataset2D(Sequence[PBREstimationSample2D]):
                 )
                 samples.append(sample)
                 self._sample_map[sample_id] = sample
-                if max_samples is not None and len(samples) >= max_samples:
+                if self.limit is not None and len(samples) >= self.limit:
                     self._samples = tuple(samples)
                     return
 
@@ -149,78 +169,43 @@ class MultiSourcePBREstimationDataset2D(Sequence[PBREstimationSample2D]):
     def __init__(
         self,
         sources: Mapping[str, str | Path | Mapping[str, Any]],
-        *,
-        name: str = "all_2d",
-        object_ids: Sequence[str] | None = None,
-        view_ids: Sequence[str] | None = None,
-        light_ids: Sequence[str] | None = None,
-        max_samples: int | None = None,
-        validate_files: bool = True,
+        split_file: str | Path | None = None,
+        limit: int | None = None,
     ) -> None:
-        self.name = name
-        self.roots: dict[str, Path] = {}
-        self._datasets: dict[str, PBREstimationDataset2D] = {}
-        self._sample_map: dict[str, PBREstimationSample2D] = {}
+        self.limit = limit
+        self._datasets: list[PBREstimationDataset2D] = []
+        remaining = limit
 
-        if max_samples is not None and max_samples < 0:
-            raise ValueError("max_samples must be non-negative or null")
-
-        samples: list[PBREstimationSample2D] = []
-        project_root = Path(__file__).resolve().parents[2]
-
-        for source_name, source_cfg in sources.items():
-            if max_samples is not None and len(samples) >= max_samples:
+        for name, cfg in sources.items():
+            if remaining is not None and remaining <= 0:
                 break
-
-            if isinstance(source_cfg, (str, Path)):
-                root_path = Path(source_cfg)
-                source_kwargs: dict[str, Any] = {}
-            elif isinstance(source_cfg, Mapping):
-                root_path = Path(source_cfg["root"])
-                source_kwargs = {k: v for k, v in source_cfg.items() if k != "root"}
+            if isinstance(cfg, (str, Path)):
+                dir_path = Path(cfg)
+                kwargs: dict[str, Any] = {}
+            elif isinstance(cfg, Mapping):
+                dir_path = Path(cfg["data_dir"])
+                kwargs = {k: v for k, v in cfg.items() if k != "data_dir"}
             else:
-                raise TypeError(
-                    f"Invalid source config for {source_name}: {source_cfg}"
-                )
-
-            root_path = (
-                root_path
-                if root_path.is_absolute()
-                else (project_root / root_path).resolve()
-            )
-            self.roots[source_name] = root_path
+                raise TypeError(f"Invalid source config for {name}: {cfg}")
 
             sub_ds = PBREstimationDataset2D(
-                root=root_path,
-                name=source_name,
-                source=source_name,
-                object_ids=source_kwargs.get("object_ids", object_ids),
-                view_ids=source_kwargs.get("view_ids", view_ids),
-                light_ids=source_kwargs.get("light_ids", light_ids),
-                max_samples=source_kwargs.get("max_samples", None),
-                validate_files=source_kwargs.get("validate_files", validate_files),
+                data_dir=dir_path,
+                source=name,
+                split_file=kwargs.get("split_file", split_file),
+                limit=kwargs.get("limit", remaining),
             )
-            self._datasets[source_name] = sub_ds
+            self._datasets.append(sub_ds)
+            if remaining is not None:
+                remaining -= len(sub_ds)
 
-            for sample in sub_ds:
-                if sample.sample_id in self._sample_map:
-                    raise ValueError(
-                        f"Duplicate sample_id across sources: {sample.sample_id}"
-                    )
-                samples.append(sample)
-                self._sample_map[sample.sample_id] = sample
-                if max_samples is not None and len(samples) >= max_samples:
-                    break
-
-        self._samples = tuple(samples)
-
-    @property
-    def root(self) -> str:
-        """String representation of roots for backwards compatibility with logging/payloads."""
-        return json.dumps({k: str(v) for k, v in self.roots.items()})
+        self._samples = tuple(
+            sample for dataset in self._datasets for sample in dataset
+        )
+        if limit is not None:
+            self._samples = self._samples[:limit]
+        self._sample_map = {sample.sample_id: sample for sample in self._samples}
 
     def get_sample(self, sample_id: str) -> PBREstimationSample2D | None:
-        """Get one sample by its canonical ID."""
         return self._sample_map.get(sample_id)
 
     def __len__(self) -> int:
@@ -231,4 +216,3 @@ class MultiSourcePBREstimationDataset2D(Sequence[PBREstimationSample2D]):
 
     def __iter__(self) -> Iterator[PBREstimationSample2D]:
         return iter(self._samples)
-

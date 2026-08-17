@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import time
+from collections.abc import Sequence
 from pathlib import Path
 
 import hydra
@@ -14,33 +15,31 @@ PROJECT_ROOT = rootutils.setup_root(
     __file__, indicator=".project_root", pythonpath=True
 )
 
-from src.data.pbr_estimation_dataset_2d import PBREstimationDataset2D  # noqa: E402
+from src.data.pbr_estimation_dataset_2d import PBREstimationDataset2D, PBREstimationSample2D  # noqa: E402
 from src.methods_2d import BaseMaterialEstimator2D  # noqa: E402
 from src.utils import get_pylogger  # noqa: E402
 
 log = get_pylogger(__name__)
 
 
-def project_path(path: str | Path) -> Path:
-    path = Path(path)
-    return path.resolve() if path.is_absolute() else (PROJECT_ROOT / path).resolve()
-
-
-def is_complete(sample_dir: Path) -> bool:
-    """Check whether a sample prediction directory contains required material channel outputs."""
-    required_channels = ("albedo.png", "roughness.png", "metallic.png")
-    return sample_dir.is_dir() and all(
-        (sample_dir / filename).is_file() for filename in required_channels
-    )
+def get_pending_samples(
+    dataset: Sequence[PBREstimationSample2D],
+    predictions_dir: Path,
+    *,
+    overwrite: bool = False,
+) -> list[PBREstimationSample2D]:
+    """Scan prediction output directory and return pending samples."""
+    return [
+        sample
+        for sample in dataset
+        if overwrite or not (predictions_dir / sample.sample_id / ".SUCCESS").is_file()
+    ]
 
 
 def infer(config: DictConfig) -> None:
     """Instantiate dataset & estimator, filter pending samples, and run prediction."""
     log.info(f"Instantiating dataset <{config.data._target_}>")
-    dataset_overrides = {}
-    if hasattr(config.data, "root") and config.data.root:
-        dataset_overrides["root"] = project_path(config.data.root)
-    dataset = instantiate(config.data, **dataset_overrides)
+    dataset: PBREstimationDataset2D = instantiate(config.data)
 
     log.info(f"Instantiating estimator <{config.method_2d._target_}>")
     estimator: BaseMaterialEstimator2D = instantiate(
@@ -51,29 +50,16 @@ def infer(config: DictConfig) -> None:
             f"Expected BaseMaterialEstimator2D, got {type(estimator).__name__}"
         )
 
-    output_dir = project_path(config.output_dir)
+    output_dir = Path(config.output_dir)
     predictions_dir = output_dir / "predictions"
     predictions_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "config.yaml").write_text(OmegaConf.to_yaml(config, resolve=True))
 
-    samples = list(dataset)
-    overwrite = (
-        bool(config.runtime.get("overwrite", False))
-        if hasattr(config, "runtime") and config.runtime
-        else False
-    )
-    pending = [
-        sample
-        for sample in samples
-        if overwrite or not is_complete(predictions_dir / sample.sample_id)
-    ]
-
-    log.info(
-        f"{estimator.name}: {len(pending)} pending, "
-        f"{len(samples) - len(pending)} complete, {len(samples)} requested"
-    )
+    overwrite = bool(config.get("runtime", {}).get("overwrite", False))
+    pending = get_pending_samples(dataset, predictions_dir, overwrite=overwrite)
+    log.info(f"{estimator.name}: {len(pending)} pending samples")
     if not pending:
-        log.info("All samples are complete. Exiting.")
+        log.info("All samples are complete (.SUCCESS markers found). Exiting.")
         return
 
     started = time.time()
