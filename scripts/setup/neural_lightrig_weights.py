@@ -21,6 +21,7 @@ REVISION = "5619cfec5e623ded0701d0b05f26ad5bbf9f0401"
 ALLOW_PATTERNS = ["mld.pt", "recon/*"]
 
 BASE_SD_REPO_ID = "sd2-community/stable-diffusion-2-1"
+UNCLIP_REPO_ID = "sd2-community/stable-diffusion-2-1-unclip"
 CLIP_REPO_ID = "laion/CLIP-ViT-H-14-laion2B-s32B-b79K"
 
 
@@ -39,11 +40,20 @@ def download_neural_lightrig_weights(
         ignore_patterns=["*.ckpt", "*.flax_model.bin", "*.msgpack"],
     )
 
+    print(f"Downloading SD2.1-unclip model '{UNCLIP_REPO_ID}' to HF cache '{hf_home}'...")
+    snapshot_download(
+        repo_id=UNCLIP_REPO_ID,
+        ignore_patterns=["*.ckpt", "*.flax_model.bin", "*.msgpack"],
+    )
+
     print(f"Downloading CLIP vision model '{CLIP_REPO_ID}' to HF cache '{hf_home}'...")
     snapshot_download(repo_id=CLIP_REPO_ID)
 
-    print(f"Downloading zero123plus scheduler from 'sudo-ai/zero123plus-v1.2' to HF cache '{hf_home}'...")
-    snapshot_download(repo_id="sudo-ai/zero123plus-v1.2", allow_patterns=["scheduler/*"])
+    print(f"Downloading zero123plus scheduler + feature_extractor_vae from 'sudo-ai/zero123plus-v1.2' to HF cache '{hf_home}'...")
+    snapshot_download(
+        repo_id="sudo-ai/zero123plus-v1.2",
+        allow_patterns=["scheduler/*", "feature_extractor_vae/*"],
+    )
 
     print(
         f"Downloading Neural LightRig weights from '{REPO_ID}' to '{output_dir}'...\n"
