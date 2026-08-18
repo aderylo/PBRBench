@@ -1,0 +1,13 @@
+name: material_anything
+_target_: src.methods_3d.material_anything.MaterialAnythingEstimator3D
+project_root: ${oc.env:PROJECT_ROOT}
+repo_root: third_party/MaterialAnything
+image2materials_model: .weights/material_anything/material_estimator
+uvrefine_model: .weights/material_anything/material_refiner
+viewpoint_preset: objaverse
+image_size: 768
+uv_size: 1024
+render_simple_factor: 4
+view_threshold: 0.1
+seed: 0
+cleanup_intermediates: true

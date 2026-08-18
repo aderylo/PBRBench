@@ -1,0 +1,28 @@
+transformers>=4.40.0
+diffusers>=0.30.0
+accelerate>=0.30.0
+pytorch-lightning>=1.9.5
+huggingface-hub>=0.25.0
+# bpy's bundled binaries are incompatible with numpy 2.x; 1.26.4 is what the
+# originally provisioned environment resolved against.
+numpy==1.26.4
+pybind11
+safetensors
+einops
+timm
+pandas
+scipy
+opencv-python-headless
+imageio
+scikit-image
+realesrgan
+basicsr
+trimesh
+pymeshlab
+pygltflib
+bpy
+xatlas
+omegaconf
+pyyaml
+tqdm
+psutil

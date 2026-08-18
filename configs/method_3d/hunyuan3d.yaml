@@ -1,0 +1,11 @@
+name: hunyuan3d
+_target_: src.methods_3d.hunyuan3d.Hunyuan3DEstimator3D
+repo_root: third_party/Hunyuan3D-2.1
+max_num_view: 6
+resolution: 512
+texture_size: 2048
+camera_elevation: 0.0
+camera_azimuth: 0.0
+camera_focal_length: 1.375
+reference_resolution: 512
+device: cuda
