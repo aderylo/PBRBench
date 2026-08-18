@@ -12,6 +12,10 @@
 set -euo pipefail
 
 readonly PROJECT_ROOT="/cluster/scratch/xiwang1/hiwi/PBREstimationEval"
+export HF_HOME="${PROJECT_ROOT}/.weights/huggingface"
+export TORCH_HOME="${PROJECT_ROOT}/.weights/torch"
+export TRANSFORMERS_OFFLINE=1
+export HF_HUB_OFFLINE=1
 readonly PREDICTIONS_DIR="${PROJECT_ROOT}/outputs/pbr_2d/pbr_oracle/predictions"
 
 cd "${PROJECT_ROOT}"

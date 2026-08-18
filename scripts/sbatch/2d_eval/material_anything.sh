@@ -11,12 +11,16 @@
 
 set -euo pipefail
 
-export HF_HOME="/cluster/scratch/xiwang1/.cache/huggingface"
+readonly PROJECT_ROOT="/cluster/scratch/xiwang1/hiwi/PBREstimationEval"
+export HF_HOME="${PROJECT_ROOT}/.weights/huggingface"
 export TRANSFORMERS_CACHE="${HF_HOME}"
+export TORCH_HOME="${PROJECT_ROOT}/.weights/torch"
+export TRANSFORMERS_OFFLINE=1
+export HF_HUB_OFFLINE=1
+
 
 module load stack/2024-06 gcc/12.2.0 cuda/12.8.0 2>/dev/null || true
 
-readonly PROJECT_ROOT="/cluster/scratch/xiwang1/hiwi/PBREstimationEval"
 readonly PYTHON="${PROJECT_ROOT}/third_party/.venvs/material_anything/bin/python"
 readonly PREDICTIONS_DIR="${PROJECT_ROOT}/outputs/pbr_2d/material_anything/predictions"
 

@@ -100,6 +100,7 @@ class SuperMat2D(BaseMaterialEstimator2D):
             self.base_model,
             safety_checker=None,
             requires_safety_checker=False,
+            local_files_only=True,
         )
 
         pipe = SuperMatAdapterWrapper.convert(
