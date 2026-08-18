@@ -55,6 +55,35 @@ def _parse_split(path: Path) -> dict[str, dict[str, set[str] | None]]:
 
 
 @dataclass(frozen=True)
+class ViewMetadata:
+    """Camera viewpoint and object normalization parameters for rendering and relighting.
+
+    Attributes:
+        camera: Camera extrinsic pose (``camera_to_world``), intrinsic matrix
+            (``intrinsics``), and render resolution (``resolution``).
+        normalization_source_to_world: 4x4 matrix scaling and centering the raw
+            mesh into the standardized unit bounding box.
+        asset_path: Path to the raw source 3D asset file before benchmark normalization.
+        recipe_hash: Optional hash of the render recipe used to generate this view.
+    """
+
+    camera: Mapping[str, Any]
+    normalization_source_to_world: list[list[float]]
+    asset_path: Path | None = None
+    recipe_hash: str | None = None
+
+    @classmethod
+    def from_dict(cls, data: Mapping[str, Any]) -> ViewMetadata:
+        asset = Path(data["asset_path"]) if data.get("asset_path") else None
+        return cls(
+            camera=data.get("camera", {}),
+            normalization_source_to_world=data.get("normalization_source_to_world", []),
+            asset_path=asset,
+            recipe_hash=data.get("recipe_hash"),
+        )
+
+
+@dataclass(frozen=True)
 class PBREstimationSample2D:
     """One registered RGB observation and its view-level PBR references."""
 
@@ -69,7 +98,9 @@ class PBREstimationSample2D:
     roughness: Path | None = None
     metallic: Path | None = None
     depth: Path | None = None
-    metadata: Mapping[str, Any] = field(default_factory=dict, repr=False)
+    view_metadata: ViewMetadata | None = None
+    asset_path: Path | None = None
+    extra_metadata: Mapping[str, Any] = field(default_factory=dict, repr=False)
     source: str = ""
 
 
@@ -153,7 +184,9 @@ class PBREstimationDataset2D(Sequence[PBREstimationSample2D]):
                     roughness=self._optional_file(view_dir / "roughness.png"),
                     metallic=self._optional_file(view_dir / "metallic.png"),
                     depth=self._optional_file(view_dir / "depth.png"),
-                    metadata=metadata,
+                    view_metadata=ViewMetadata.from_dict(metadata),
+                    asset_path=Path(metadata["asset_path"]) if "asset_path" in metadata else None,
+                    extra_metadata=metadata,
                     source=self.source,
                 )
                 samples.append(sample)

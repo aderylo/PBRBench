@@ -13,6 +13,8 @@ from typing import Any
 import yaml
 from hydra.utils import instantiate
 
+from src.data.pbr_estimation_dataset_2d import ViewMetadata
+
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -31,7 +33,9 @@ class PBREstimationSample3D:
     normal: Path | None = None
     uv_mask: Path | None = None
     reference_view: Path | None = None
-    metadata: Mapping[str, Any] = field(default_factory=dict, repr=False)
+    view_metadata: ViewMetadata | None = None
+    asset_path: Path | None = None
+    extra_metadata: Mapping[str, Any] = field(default_factory=dict, repr=False)
     source: str = ""
 
     @property
@@ -141,7 +145,13 @@ class PBREstimationDataset3D(Sequence[PBREstimationSample3D]):
                     raise ValueError(f"Duplicate sample_id: {sample_id}")
 
                 ref_view_path: Path | None = None
+                view_metadata: Mapping[str, Any] | None = None
                 if ref_view_dir is not None:
+                    if (ref_view_dir / "metadata.json").is_file():
+                        try:
+                            view_metadata = json.loads((ref_view_dir / "metadata.json").read_text())
+                        except json.JSONDecodeError:
+                            view_metadata = None
                     for ext in (".png", ".jpg"):
                         cand = ref_view_dir / "rgb" / f"{tex_id}{ext}"
                         if cand.is_file():
@@ -160,7 +170,9 @@ class PBREstimationDataset3D(Sequence[PBREstimationSample3D]):
                     normal=pbr_paths.get("normal"),
                     uv_mask=uv_mask_path,
                     reference_view=ref_view_path,
-                    metadata=metadata,
+                    view_metadata=ViewMetadata.from_dict(view_metadata) if view_metadata is not None else None,
+                    asset_path=Path(metadata["asset_path"]) if "asset_path" in metadata else None,
+                    extra_metadata=metadata,
                     source=self.source,
                 )
                 samples.append(sample)

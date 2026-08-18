@@ -28,6 +28,7 @@ class Prediction3D:
     albedo: Image.Image | Path | None = None
     roughness: Image.Image | Path | None = None
     metallic: Image.Image | Path | None = None
+    artifacts: dict[str, Path] | None = None
 
     def save(self, save_dir: Path, *, mark_success: bool = False) -> Prediction3D:
         """Save predicted material maps into ``save_dir`` and optionally mark success."""

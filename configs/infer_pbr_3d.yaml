@@ -1,0 +1,17 @@
+defaults:
+  - data: dtc_3d
+  - method_3d: material_anything
+  - _self_
+
+output_dir: outputs/pbr_3d/${method_3d.name}
+
+runtime:
+  overwrite: false
+  debug: false
+
+hydra:
+  run:
+    dir: .
+  output_subdir: null
+  job:
+    chdir: false

@@ -95,7 +95,7 @@ def build_relight_job_2d(
         object_metadata = None
         for view_id, entries in object_views.items():
             first_sample = entries[0][0]
-            metadata = dict(first_sample.metadata)
+            metadata = dict(first_sample.view_metadata or first_sample.extra_metadata)
             object_metadata = metadata
 
             gt_channels = {
