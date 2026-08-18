@@ -1,11 +1,24 @@
-name: all_3d
 _target_: src.data.pbr_estimation_dataset_3d.MultiSourcePBREstimationDataset3D
-sources:
-  dtc: data/3d_eval/dtc
-  texverse: data/3d_eval/texverse
-  objaverse: data/3d_eval/objaverse
-  polyhaven: data/3d_eval/polyhaven
-object_ids: null
-texture_ids: null
-max_samples: null
-validate_files: true
+_recursive_: false
+datasets:
+  - _target_: src.data.pbr_estimation_dataset_3d.PBREstimationDataset3D
+    data_dir: data/3d_eval/dtc
+    split_file: configs/data/splits/dtc_3d.yaml
+    source: dtc
+    limit: null
+  - _target_: src.data.pbr_estimation_dataset_3d.PBREstimationDataset3D
+    data_dir: data/3d_eval/texverse
+    split_file: configs/data/splits/texverse_3d.yaml
+    source: texverse
+    limit: null
+  - _target_: src.data.pbr_estimation_dataset_3d.PBREstimationDataset3D
+    data_dir: data/3d_eval/objaverse
+    split_file: configs/data/splits/objaverse_3d.yaml
+    source: objaverse
+    limit: null
+  - _target_: src.data.pbr_estimation_dataset_3d.PBREstimationDataset3D
+    data_dir: data/3d_eval/polyhaven
+    split_file: configs/data/splits/polyhaven_3d.yaml
+    source: polyhaven
+    limit: null
+limit: null

@@ -1,6 +1,5 @@
 _target_: src.data.pbr_estimation_dataset_3d.PBREstimationDataset3D
-root: data/3d_eval/objaverse
-split_file: configs/data/subsets/objaverse_pbr_64.yaml
-image_size: 1024
+data_dir: data/3d_eval/objaverse
+split_file: configs/data/splits/objaverse_3d.yaml
 limit: null
 source: objaverse

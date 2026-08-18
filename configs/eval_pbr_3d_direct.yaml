@@ -1,0 +1,16 @@
+defaults:
+  - data: all_3d
+  - _self_
+
+# This is the `predictions` directory written by `infer_pbr_3d.py`. Its
+# immediate subdirectories must use the canonical sample-id naming scheme.
+predictions_dir: outputs/pbr_3d/trellis2/predictions
+output_file: null
+strict: false
+
+hydra:
+  run:
+    dir: .
+  output_subdir: null
+  job:
+    chdir: false

@@ -14,45 +14,7 @@ from PIL import Image
 CHANNELS = ("albedo", "roughness", "metallic")
 
 
-# TODO: Deprecated. Remove once eval_pbr_3d_direct.py is refactored to use Prediction3D directly.
-@dataclass(frozen=True)
-class Prediction:
-    """The persisted channel files for one prediction sample (legacy compatibility)."""
 
-    sample_id: str
-    directory: Path
-    channels: dict[str, Path]
-
-    def missing_channels(self) -> tuple[str, ...]:
-        """Return required channels that are absent from this prediction."""
-        return tuple(
-            name for name, path in self.channels.items() if not path.is_file()
-        )
-
-
-# TODO: Deprecated. Remove once eval_pbr_3d_direct.py is refactored to use Prediction3D directly.
-def scan_predictions(
-    predictions_dir: Path, required_channels: Iterable[str] = CHANNELS
-) -> dict[str, Prediction]:
-    """Scan canonical ``<predictions_dir>/<sample_id>/<channel>.png`` outputs."""
-    if not predictions_dir.is_dir():
-        raise FileNotFoundError(
-            f"Prediction directory does not exist: {predictions_dir}"
-        )
-
-    channel_names = tuple(required_channels)
-    return {
-        directory.name: Prediction(
-            sample_id=directory.name,
-            directory=directory,
-            channels={
-                channel: directory / f"{channel}.png"
-                for channel in channel_names
-            },
-        )
-        for directory in sorted(predictions_dir.iterdir())
-        if directory.is_dir()
-    }
 
 
 def srgb_to_linear(value: np.ndarray) -> np.ndarray:
