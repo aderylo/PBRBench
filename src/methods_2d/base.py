@@ -16,9 +16,9 @@ from src.data.pbr_estimation_dataset_2d import PBREstimationSample2D
 class Prediction2D:
     """Predicted 2D material maps for one sample."""
 
-    albedo: Image.Image
-    roughness: Image.Image
-    metallic: Image.Image
+    albedo: Image.Image | Path
+    roughness: Image.Image | Path
+    metallic: Image.Image | Path
 
     def save(self, save_dir: Path, *, mark_success: bool = True) -> Prediction2D:
         """Save the predicted channels into ``save_dir`` and return self."""
@@ -32,6 +32,17 @@ class Prediction2D:
             (save_dir / ".SUCCESS").touch()
 
         return self
+
+
+    @classmethod
+    def from_dir(cls, sample_dir: Path) -> Prediction2D:
+        """Construct Prediction2D pointing to channel file paths in sample_dir."""
+        return cls(
+            albedo=sample_dir / "albedo.png",
+            roughness=sample_dir / "roughness.png",
+            metallic=sample_dir / "metallic.png",
+        )
+
 
 
 

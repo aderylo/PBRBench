@@ -33,10 +33,13 @@ from src.utils.eval import (  # noqa: E402
     write_yaml,
 )
 from src.utils.metrics import (  # noqa: E402
-    masked_mae_rmse_psnr,
+    mae,
     mean_metrics,
     metric_statistics,
+    psnr,
+    rmse,
 )
+
 
 log = get_pylogger(__name__)
 
@@ -77,8 +80,6 @@ class DirectEvaluationPayload3D:
 
     evaluation: str
     predictions_dir: str
-    dataset_name: str
-    dataset_root: str
     counts: EvaluationCounts
     aggregate: dict[str, dict[str, float]]
     statistics: dict[str, dict[str, dict[str, float | int]]]
@@ -237,9 +238,14 @@ def evaluate_single_sample(
             target = srgb_to_linear(target)
             prediction_image = srgb_to_linear(prediction_image)
 
-        metrics[channel] = masked_mae_rmse_psnr(prediction_image, target, mask)
+        metrics[channel] = {
+            "mae": mae(prediction_image, target, mask),
+            "rmse": rmse(prediction_image, target, mask),
+            "psnr": psnr(prediction_image, target, mask),
+        }
 
     return metrics
+
 
 
 def summarize_results(
@@ -258,10 +264,7 @@ def evaluate(config: DictConfig) -> DirectEvaluationPayload3D:
     """Evaluate 3D prediction artifacts registered in the configured 3D dataset."""
     predictions_dir = project_path(config.predictions_dir)
     log.info("Instantiating dataset <%s>", config.data._target_)
-    dataset_overrides = {}
-    if hasattr(config.data, "root") and config.data.root:
-        dataset_overrides["root"] = project_path(config.data.root)
-    dataset = instantiate(config.data, **dataset_overrides)
+    dataset = instantiate(config.data)
     samples = {sample.sample_id: sample for sample in dataset}
     predictions = scan_predictions(predictions_dir, CHANNELS)
 
@@ -324,8 +327,6 @@ def evaluate(config: DictConfig) -> DirectEvaluationPayload3D:
     payload = DirectEvaluationPayload3D(
         evaluation="pbr_3d_direct",
         predictions_dir=str(predictions_dir),
-        dataset_name=dataset.name,
-        dataset_root=str(dataset.root),
         counts=EvaluationCounts(
             requested=len(samples),
             discovered_predictions=len(predictions),

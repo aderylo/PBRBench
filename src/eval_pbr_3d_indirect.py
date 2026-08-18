@@ -1,4 +1,4 @@
-"""Relight screen-space PBR predictions in Blender and compare the renders."""
+"""Relight predicted 3D GLB assets in Blender and evaluate rendered appearance."""
 
 from __future__ import annotations
 
@@ -6,33 +6,31 @@ import contextlib
 import json
 import subprocess
 import tempfile
-from collections import defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
+
+import numpy as np
 
 import hydra
 import rootutils
 from hydra.utils import instantiate
 from omegaconf import DictConfig, OmegaConf
 from tqdm.auto import tqdm
+
 PROJECT_ROOT = rootutils.setup_root(
     __file__, indicator=".project_root", pythonpath=True
 )
 
-from src.data.pbr_estimation_dataset_2d import (  # noqa: E402
-    PBREstimationDataset2D,
-    PBREstimationSample2D,
+from src.data.pbr_estimation_dataset_3d import (  # noqa: E402
+    PBREstimationDataset3D,
+    PBREstimationSample3D,
 )
 from src.data.preprocessing.utils import resolve_lights  # noqa: E402
 from src.utils import get_pylogger  # noqa: E402
-
-log = get_pylogger(__name__)
 from src.utils.eval import (  # noqa: E402
-    CHANNELS,
     load_alpha,
     load_image,
-    Prediction,
-    scan_predictions,
     write_yaml,
 )
 from src.utils.metrics import (  # noqa: E402
@@ -59,33 +57,32 @@ class IndirectEvaluationCounts:
 
 
 @dataclass(frozen=True)
-class IndirectSampleResult:
-    """Indirect metrics and identifying metadata for one registered sample."""
+class IndirectSampleResult3D:
+    """Indirect metrics and identifying metadata for one registered 3D sample."""
 
     object_id: str
-    view_id: str
-    light_id: str
+    texture_id: str
     metrics: dict[str, float]
     targets: dict[str, dict[str, float]]
     source: str = ""
 
 
 @dataclass(frozen=True)
-class IndirectEvaluationPayload:
-    """Complete, YAML-serializable result of an indirect PBR evaluation run."""
+class IndirectEvaluationPayload3D:
+    """Complete, YAML-serializable result of an indirect 3D PBR evaluation run."""
 
     evaluation: str
     predictions_dir: str
     target_envmaps: list[str]
     counts: IndirectEvaluationCounts
-    aggregate: dict[str, float]
-    samples: dict[str, IndirectSampleResult]
+    aggregate: dict[str, Any]
+    samples: dict[str, IndirectSampleResult3D]
     failures: dict[str, str]
 
 
 @dataclass
-class RelightingJobState:
-    """Paths and validation failures produced while constructing a Blender job."""
+class RelightingJobState3D:
+    """Paths and validation failures produced while constructing a Blender 3D relighting job."""
 
     failures: dict[str, str] = field(default_factory=dict)
     score_paths: dict[str, dict[str, tuple[Path, Path]]] = field(
@@ -98,21 +95,13 @@ def project_path(value: str | Path) -> Path:
     return path.resolve() if path.is_absolute() else (PROJECT_ROOT / path).resolve()
 
 
-def ground_truth_channels(directory: Path) -> dict[str, str]:
-    return {name: str((directory / f"{name}.png").resolve()) for name in CHANNELS}
-
-
-def prediction_channels(prediction: Prediction) -> dict[str, str]:
-    return {name: str(path.resolve()) for name, path in prediction.channels.items()}
-
-
 def build_job(
     config: DictConfig,
-    samples: list[PBREstimationSample2D],
-    predictions: dict[str, Prediction],
+    samples: list[PBREstimationSample3D],
+    predictions_dir: Path,
     temporary_dir: Path,
-) -> tuple[dict, RelightingJobState]:
-    """Build a Blender relighting job from registered, complete predictions."""
+) -> tuple[dict, RelightingJobState3D]:
+    """Build a Blender relighting job for predicted 3D GLB assets."""
     targets = resolve_lights(config)
     if config.target_envmaps:
         selected = {str(item) for item in config.target_envmaps}
@@ -121,131 +110,100 @@ def build_job(
         if missing:
             raise ValueError(f"Unknown target environment maps: {sorted(missing)}")
 
-    grouped: dict[str, dict[str, list]] = defaultdict(lambda: defaultdict(list))
-    state = RelightingJobState()
+    state = RelightingJobState3D()
+    sample_jobs = []
+
     for sample in samples:
-        prediction = predictions.get(sample.sample_id)
-        if prediction is None:
-            state.failures[sample.sample_id] = "Prediction directory missing"
+        sample_dir = predictions_dir / sample.sample_id
+        if not sample_dir.is_dir():
+            state.failures[sample.sample_id] = f"Prediction directory missing: {sample_dir}"
             continue
-        missing_channels = prediction.missing_channels()
-        if missing_channels:
-            state.failures[sample.sample_id] = (
-                f"missing prediction channels: {', '.join(missing_channels)}"
+
+        pred_mesh = sample_dir / "mesh.glb"
+        if not pred_mesh.is_file():
+            for alt in ("mesh.gltf", "mesh.obj"):
+                if (sample_dir / alt).is_file():
+                    pred_mesh = sample_dir / alt
+                    break
+
+        if not pred_mesh.is_file():
+            state.failures[sample.sample_id] = "missing predicted 3D mesh (mesh.glb/mesh.obj)"
+            continue
+
+        gt_asset = sample.mesh_path
+        if not gt_asset.is_file() and "asset_path" in sample.metadata:
+            gt_asset = Path(sample.metadata["asset_path"])
+
+        outputs = {
+            target["id"]: str(
+                temporary_dir / "pred" / sample.sample_id / f"{target['id']}.png"
             )
-            continue
-        if any(getattr(sample, name) is None for name in CHANNELS):
-            state.failures[sample.sample_id] = "missing ground-truth material channel"
-            continue
-        sample_targets = list(targets)
-        if not sample_targets:
-            state.failures[sample.sample_id] = "no target environment maps remain"
-            continue
-        grouped[sample.object_id][sample.view_id].append(
-            (sample, prediction, sample_targets)
+            for target in targets
+        }
+        gt_outputs = {
+            target["id"]: str(
+                temporary_dir / "gt" / sample.object_id / f"{target['id']}.png"
+            )
+            for target in targets
+        }
+
+        state.score_paths[sample.sample_id] = {
+            target["id"]: (Path(outputs[target["id"]]), Path(gt_outputs[target["id"]]))
+            for target in targets
+        }
+
+        sample_jobs.append(
+            {
+                "sample_id": sample.sample_id,
+                "gt_asset_path": str(gt_asset.resolve()),
+                "pred_mesh_path": str(pred_mesh.resolve()),
+                "outputs": outputs,
+                "gt_outputs": gt_outputs,
+            }
         )
 
-    objects = []
-    for object_id, object_views in grouped.items():
-        view_jobs = []
-        object_metadata = None
-        for view_id, entries in object_views.items():
-            first = entries[0][0]
-            metadata = dict(first.metadata)
-            object_metadata = metadata
-            view_dir = first.albedo.parent
-            target_ids = {
-                target["id"]
-                for _, _, sample_targets in entries
-                for target in sample_targets
-            }
-            gt_outputs = {
-                target_id: str(
-                    temporary_dir / "gt" / object_id / view_id / f"{target_id}.png"
-                )
-                for target_id in target_ids
-            }
-            prediction_jobs = []
-            for sample, prediction, sample_targets in entries:
-                outputs = {
-                    target["id"]: str(
-                        temporary_dir
-                        / "pred"
-                        / sample.sample_id
-                        / f"{target['id']}.png"
-                    )
-                    for target in sample_targets
-                }
-                state.score_paths[sample.sample_id] = {
-                    target_id: (Path(output), Path(gt_outputs[target_id]))
-                    for target_id, output in outputs.items()
-                }
-                prediction_jobs.append(
-                    {
-                        "sample_id": sample.sample_id,
-                        "channels": prediction_channels(prediction),
-                        "outputs": outputs,
-                    }
-                )
-            view_jobs.append(
-                {
-                    "camera": metadata["camera"],
-                    "ground_truth": ground_truth_channels(view_dir),
-                    "ground_truth_outputs": gt_outputs,
-                    "predictions": prediction_jobs,
-                }
-            )
-        if object_metadata is not None:
-            objects.append(
-                {
-                    "object_id": object_id,
-                    "asset_path": object_metadata["asset_path"],
-                    "normalization": object_metadata["normalization_source_to_world"],
-                    "views": view_jobs,
-                }
-            )
     return (
         {
             "renderer": OmegaConf.to_container(config.rendering, resolve=True),
             "targets": targets,
-            "objects": objects,
+            "samples": sample_jobs,
         },
         state,
     )
 
 
-def evaluate(config: DictConfig) -> IndirectEvaluationPayload:
-    """Relight registered predictions and evaluate their rendered appearance."""
-    log.info("Instantiating dataset <%s>", config.data._target_)
-    dataset: PBREstimationDataset2D = instantiate(config.data)
-    samples = list(dataset)
+def evaluate(config: DictConfig) -> IndirectEvaluationPayload3D:
+    """Relight predicted 3D GLB assets and evaluate rendered appearance metrics."""
     predictions_dir = project_path(config.predictions_dir)
-    predictions = scan_predictions(predictions_dir, CHANNELS)
+    log.info("Instantiating dataset <%s>", config.data._target_)
+    dataset: PBREstimationDataset3D = instantiate(config.data)
+    samples = list(dataset)
+    discovered_predictions = len([d for d in predictions_dir.iterdir() if d.is_dir()]) if predictions_dir.is_dir() else 0
     log.info(
-        "Found %d prediction directories for %d requested dataset samples",
-        len(predictions),
+        "Found %d prediction directories for %d requested 3D dataset samples",
+        discovered_predictions,
         len(samples),
     )
 
     should_save_renders = bool(config.get("save_rerenders"))
     if should_save_renders:
-        renders_dir = predictions_dir.parent / "rerenders"
+        renders_dir = predictions_dir.parent / "rerenders_3d"
         renders_dir.mkdir(parents=True, exist_ok=True)
         cm = contextlib.nullcontext(renders_dir)
-        log.info("Saving rerenders to %s", renders_dir)
+        log.info("Saving 3D rerenders to %s", renders_dir)
     else:
         renders_dir = None
-        cm = tempfile.TemporaryDirectory(prefix="pbr_eval_relight_")
+        cm = tempfile.TemporaryDirectory(prefix="pbr_eval_relight_3d_")
 
     with cm as target_dir_raw:
         working_dir = Path(target_dir_raw)
-        job, state = build_job(config, samples, predictions, working_dir)
-        log.info("Relighting %d valid prediction samples", len(state.score_paths))
-        if job["objects"]:
+        job, state = build_job(config, samples, predictions_dir, working_dir)
+        log.info("Relighting %d valid 3D prediction samples", len(state.score_paths))
+        if job["samples"]:
             job_path = working_dir / "job.json"
             job_path.write_text(json.dumps(job, indent=2))
-            helper = Path(__file__).parent / "utils" / "_relight_pbr_2d_blender.py"
-            blender_log_path = predictions_dir.parent / "blender_relight.log"
+            helper = Path(__file__).parent / "utils" / "_relight_pbr_3d_blender.py"
+            blender_log_path = predictions_dir.parent / "blender_relight_3d.log"
             log.info("Blender log saved to %s", blender_log_path)
 
             cmd = [
@@ -267,7 +225,7 @@ def evaluate(config: DictConfig) -> IndirectEvaluationPayload:
                 )
                 with tqdm(
                     total=len(state.score_paths),
-                    desc="Indirect PBR relighting (Blender)",
+                    desc="Indirect 3D PBR relighting (Blender)",
                     unit="sample",
                 ) as pbar:
                     if process.stdout:
@@ -284,11 +242,12 @@ def evaluate(config: DictConfig) -> IndirectEvaluationPayload:
             str(config.lpips_backbone),
             project_path(config.model_cache_dir),
         )
-        results: dict[str, IndirectSampleResult] = {}
+        results: dict[str, IndirectSampleResult3D] = {}
         all_target_metrics: list[dict[str, float]] = []
         relight_target_metrics: list[dict[str, float]] = []
         cycle_target_metrics: list[dict[str, float]] = []
         sample_lookup = {sample.sample_id: sample for sample in samples}
+
         for sample_id, target_paths in state.score_paths.items():
             target_results = {}
             sample = sample_lookup.get(sample_id)
@@ -298,36 +257,38 @@ def evaluate(config: DictConfig) -> IndirectEvaluationPayload:
                 for target_id, (prediction_path, gt_path) in target_paths.items():
                     prediction = load_image(prediction_path, rgb=True)
                     target = load_image(gt_path, rgb=True)
-                    mask = load_alpha(gt_path)
+                    try:
+                        mask = load_alpha(gt_path)
+                    except Exception:
+                        mask = (target > 0.001).any(axis=-1)
+
+                    if not mask.any():
+                        mask = (target > 0.001).any(axis=-1)
                     metrics = {
                         "rmse": rmse(prediction, target, mask),
                         "psnr": psnr(prediction, target, mask),
                     }
                     metrics["ssim"] = ssim(prediction, target, mask)
                     metrics["lpips"] = lpips_metric(prediction, target, mask)
-
                     target_results[target_id] = metrics
 
+
                     all_target_metrics.append(metrics)
-                    if target_id == sample.light_id:
+                    if target_id == sample.texture_id:
                         cycle_target_metrics.append(metrics)
                     else:
                         relight_target_metrics.append(metrics)
 
-                results[sample_id] = IndirectSampleResult(
+                results[sample_id] = IndirectSampleResult3D(
                     object_id=sample.object_id,
-                    view_id=sample.view_id,
-                    light_id=sample.light_id,
+                    texture_id=sample.texture_id,
                     metrics=mean_metrics(target_results.values()),
                     targets=target_results,
                     source=sample.source,
                 )
-                log.info("Evaluated %s", sample_id)
+                log.info("Evaluated 3D indirect relighting for %s", sample_id)
             except (FileNotFoundError, ValueError) as error:
                 state.failures[sample_id] = str(error)
-
-    if not cycle_target_metrics:
-        log.warning("No cycle-consistency targets evaluated (source light not in target envmaps).")
 
     aggregate = {
         "relight": mean_metrics(relight_target_metrics) if relight_target_metrics else mean_metrics(all_target_metrics),
@@ -335,15 +296,15 @@ def evaluate(config: DictConfig) -> IndirectEvaluationPayload:
         "overall": mean_metrics(all_target_metrics),
     }
 
-    payload = IndirectEvaluationPayload(
-        evaluation="pbr_2d_indirect",
+    payload = IndirectEvaluationPayload3D(
+        evaluation="pbr_3d_indirect",
         predictions_dir=str(predictions_dir),
         target_envmaps=[target["id"] for target in job["targets"]],
         counts=IndirectEvaluationCounts(
             requested=len(samples),
-            discovered_predictions=len(predictions),
+            discovered_predictions=discovered_predictions,
             registered_predictions=sum(
-                sample_id in sample_lookup for sample_id in predictions
+                sample_id in sample_lookup for sample_id in state.score_paths
             ),
             evaluated=len(results),
             failed=len(state.failures),
@@ -352,23 +313,24 @@ def evaluate(config: DictConfig) -> IndirectEvaluationPayload:
         samples=results,
         failures=state.failures,
     )
+
     output_file = (
         project_path(config.output_file)
-        if config.output_file
-        else predictions_dir.parent / "metrics_indirect.yaml"
+        if config.get("output_file")
+        else predictions_dir.parent / "indirect_metrics.yaml"
     )
     write_yaml(output_file, payload)
-    log.info(f"Wrote indirect metrics to {output_file}")
+    log.info(f"Wrote indirect 3D metrics to {output_file}")
     log.info("Aggregate metrics: %s", payload.aggregate)
-    if state.failures and bool(config.strict):
+    if state.failures and bool(config.get("strict", False)):
         raise RuntimeError(
-            f"{len(state.failures)} evaluation failures across {len(samples)} dataset samples"
+            f"{len(state.failures)} evaluation failures across {len(samples)} 3D dataset samples"
         )
     return payload
 
 
 @hydra.main(
-    version_base="1.3", config_path="../configs", config_name="eval_pbr_2d_indirect"
+    version_base="1.3", config_path="../configs", config_name="eval_pbr_3d_indirect"
 )
 def main(config: DictConfig) -> None:
     evaluate(config)

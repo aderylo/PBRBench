@@ -10,58 +10,117 @@ from typing import Any
 import numpy as np
 
 
-def masked_rmse_psnr(
-    prediction: np.ndarray, target: np.ndarray, mask: np.ndarray
-) -> dict[str, float]:
-    """Compute RMSE and PSNR over the foreground mask."""
+def validate_matching_shapes(
+    prediction: np.ndarray,
+    target: np.ndarray,
+    mask: np.ndarray | None = None,
+) -> None:
+    """Validate that prediction, target, and optional mask shapes match."""
     if prediction.shape != target.shape:
         raise ValueError(
             f"shape mismatch: prediction {prediction.shape}, target {target.shape}"
         )
-    if mask.shape != target.shape[:2]:
-        raise ValueError(f"mask shape {mask.shape} does not match image {target.shape}")
-    if not mask.any():
-        raise ValueError("foreground mask is empty")
-    difference = prediction[mask] - target[mask]
-    rmse = float(np.sqrt(np.mean(difference * difference)))
-    psnr = math.inf if rmse == 0.0 else float(-20.0 * math.log10(rmse))
-    return {"rmse": rmse, "psnr": psnr}
+    if mask is not None:
+        if mask.shape != target.shape[:2]:
+            raise ValueError(
+                f"mask shape {mask.shape} does not match image {target.shape}"
+            )
+        if not mask.any():
+            raise ValueError("foreground mask is empty")
+
+
+def compute_difference(
+    prediction: np.ndarray,
+    target: np.ndarray,
+    mask: np.ndarray | None = None,
+) -> np.ndarray:
+    """Return pixel difference array (masked if mask is provided)."""
+    validate_matching_shapes(prediction, target, mask)
+    return (
+        prediction[mask] - target[mask]
+        if mask is not None
+        else prediction - target
+    )
+
+
+def rmse(
+    prediction: np.ndarray,
+    target: np.ndarray,
+    mask: np.ndarray | None = None,
+) -> float:
+    """Compute Root Mean Squared Error (RMSE), optionally masked."""
+    diff = compute_difference(prediction, target, mask=mask)
+    return float(np.sqrt(np.mean(diff * diff)))
+
+
+def psnr(
+    prediction: np.ndarray,
+    target: np.ndarray,
+    mask: np.ndarray | None = None,
+) -> float:
+    """Compute Peak Signal-to-Noise Ratio (PSNR) in dB, optionally masked."""
+    val = rmse(prediction, target, mask=mask)
+    return math.inf if val == 0.0 else float(-20.0 * math.log10(val))
+
+
+def mae(
+    prediction: np.ndarray,
+    target: np.ndarray,
+    mask: np.ndarray | None = None,
+) -> float:
+    """Compute Mean Absolute Error (MAE), optionally masked."""
+    diff = compute_difference(prediction, target, mask=mask)
+    return float(np.mean(np.abs(diff)))
 
 
 def ssim(
     prediction: np.ndarray,
     target: np.ndarray,
-    mask: np.ndarray,
+    mask: np.ndarray | None = None,
 ) -> float:
-    """Compute masked RGB SSIM with standard Gaussian local statistics."""
-    if prediction.shape != target.shape or prediction.ndim != 3:
-        raise ValueError("SSIM expects equally shaped RGB images")
+
+    """Compute (optionally masked) RGB SSIM with standard Gaussian local statistics."""
+    validate_matching_shapes(prediction, target, mask)
+    if prediction.ndim != 3:
+        raise ValueError("SSIM expects equally shaped RGB images (H, W, C)")
+
     try:
         from scipy.ndimage import binary_erosion, gaussian_filter
     except ImportError as error:
         raise RuntimeError(
             "Indirect evaluation requires scipy; run `uv sync`."
         ) from error
-    if not mask.any():
-        raise ValueError("foreground mask is empty")
+
+
     sigma = 1.5
     mean_x = gaussian_filter(prediction, sigma=(sigma, sigma, 0))
     mean_y = gaussian_filter(target, sigma=(sigma, sigma, 0))
     variance_x = (
-        gaussian_filter(prediction * prediction, sigma=(sigma, sigma, 0)) - mean_x**2
+        gaussian_filter(prediction * prediction, sigma=(sigma, sigma, 0))
+        - mean_x**2
     )
-    variance_y = gaussian_filter(target * target, sigma=(sigma, sigma, 0)) - mean_y**2
+    variance_y = (
+        gaussian_filter(target * target, sigma=(sigma, sigma, 0)) - mean_y**2
+    )
     covariance = (
-        gaussian_filter(prediction * target, sigma=(sigma, sigma, 0)) - mean_x * mean_y
+        gaussian_filter(prediction * target, sigma=(sigma, sigma, 0))
+        - mean_x * mean_y
     )
     c1 = 0.01**2
     c2 = 0.03**2
     score_map = ((2 * mean_x * mean_y + c1) * (2 * covariance + c2)) / (
         (mean_x**2 + mean_y**2 + c1) * (variance_x + variance_y + c2)
     )
-    valid = binary_erosion(mask, iterations=5)
-    if not valid.any():
-        valid = mask
+
+    if mask is not None:
+        if not mask.any():
+            raise ValueError("foreground mask is empty")
+        valid = binary_erosion(mask, iterations=5)
+        if not valid.any():
+            valid = mask
+    else:
+        valid = np.ones(prediction.shape[:2], dtype=bool)
+
     return float(score_map[valid].mean())
 
 
@@ -89,16 +148,23 @@ class LPIPSMetric:
         self.model = lpips.LPIPS(net=backbone).to(device).eval()
 
     def __call__(
-        self, prediction: np.ndarray, target: np.ndarray, mask: np.ndarray
+        self,
+        prediction: np.ndarray,
+        target: np.ndarray,
+        mask: np.ndarray | None = None,
     ) -> float:
-        rows, columns = np.nonzero(mask)
-        if len(rows) == 0:
-            raise ValueError("foreground mask is empty")
-        y0, y1 = int(rows.min()), int(rows.max()) + 1
-        x0, x1 = int(columns.min()), int(columns.max()) + 1
-        crop_mask = mask[y0:y1, x0:x1, None]
-        pred_crop = prediction[y0:y1, x0:x1] * crop_mask
-        target_crop = target[y0:y1, x0:x1] * crop_mask
+        if mask is not None:
+            rows, columns = np.nonzero(mask)
+            if len(rows) == 0:
+                raise ValueError("foreground mask is empty")
+            y0, y1 = int(rows.min()), int(rows.max()) + 1
+            x0, x1 = int(columns.min()), int(columns.max()) + 1
+            crop_mask = mask[y0:y1, x0:x1, None]
+            pred_crop = prediction[y0:y1, x0:x1] * crop_mask
+            target_crop = target[y0:y1, x0:x1] * crop_mask
+        else:
+            pred_crop = prediction
+            target_crop = target
 
         def tensor(array: np.ndarray):
             value = self.torch.from_numpy(array.copy()).permute(2, 0, 1)[None]
@@ -115,7 +181,10 @@ class LPIPSMetric:
             return value
 
         with self.torch.inference_mode():
-            return float(self.model(tensor(pred_crop), tensor(target_crop)).item())
+            return float(
+                self.model(tensor(pred_crop), tensor(target_crop)).item()
+            )
+
 
 
 def mean_metrics(items: Iterable[dict[str, Any]]) -> dict[str, Any]:

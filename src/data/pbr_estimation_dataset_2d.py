@@ -177,6 +177,18 @@ class PBREstimationDataset2D(Sequence[PBREstimationSample2D]):
         """Get one sample by its canonical ID."""
         return self._sample_map.get(sample_id)
 
+    def get(
+        self, sample_id: str, default: PBREstimationSample2D | None = None
+    ) -> PBREstimationSample2D | None:
+        """Get one sample by its canonical ID with optional default."""
+        return self._sample_map.get(sample_id, default)
+
+    def __contains__(self, sample_id: object) -> bool:
+        return sample_id in self._sample_map
+
+    def keys(self) -> tuple[str, ...]:
+        return tuple(self._sample_map.keys())
+
     def __len__(self) -> int:
         return len(self._samples)
 
@@ -226,6 +238,17 @@ class MultiSourcePBREstimationDataset2D(Sequence[PBREstimationSample2D]):
     def get_sample(self, sample_id: str) -> PBREstimationSample2D | None:
         return self._sample_map.get(sample_id)
 
+    def get(
+        self, sample_id: str, default: PBREstimationSample2D | None = None
+    ) -> PBREstimationSample2D | None:
+        return self._sample_map.get(sample_id, default)
+
+    def __contains__(self, sample_id: object) -> bool:
+        return sample_id in self._sample_map
+
+    def keys(self) -> tuple[str, ...]:
+        return tuple(self._sample_map.keys())
+
     def __len__(self) -> int:
         return len(self._samples)
 
@@ -243,3 +266,4 @@ class MultiSourcePBREstimationDataset2D(Sequence[PBREstimationSample2D]):
 
     def __iter__(self) -> Iterator[PBREstimationSample2D]:
         return iter(self._samples)
+
