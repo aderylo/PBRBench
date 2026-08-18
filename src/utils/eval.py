@@ -14,8 +14,7 @@ from PIL import Image
 CHANNELS = ("albedo", "roughness", "metallic")
 
 
-# TODO: Deprecated. Remove once eval_pbr_2d_indirect.py and eval_pbr_3d_direct.py
-# are refactored to use Prediction2D and Prediction3D directly.
+# TODO: Deprecated. Remove once eval_pbr_3d_direct.py is refactored to use Prediction3D directly.
 @dataclass(frozen=True)
 class Prediction:
     """The persisted channel files for one prediction sample (legacy compatibility)."""
@@ -31,8 +30,7 @@ class Prediction:
         )
 
 
-# TODO: Deprecated. Remove once eval_pbr_2d_indirect.py and eval_pbr_3d_direct.py
-# are refactored to use Prediction2D and Prediction3D directly.
+# TODO: Deprecated. Remove once eval_pbr_3d_direct.py is refactored to use Prediction3D directly.
 def scan_predictions(
     predictions_dir: Path, required_channels: Iterable[str] = CHANNELS
 ) -> dict[str, Prediction]:
