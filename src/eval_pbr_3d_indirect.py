@@ -18,8 +18,13 @@ PROJECT_ROOT = rootutils.setup_root(
 
 from src.data.pbr_estimation_dataset_3d import PBREstimationDataset3D
 from src.methods_3d import Prediction3D
-from src.utils import get_pylogger
-from src.utils.eval import load_alpha, load_image, load_mask, write_yaml
+from src.utils.eval import (
+    align_resolutions,
+    load_alpha,
+    load_image,
+    load_mask,
+    write_yaml,
+)
 from src.utils.metrics import (
     LPIPSMetric,
     mae,
@@ -73,6 +78,8 @@ def evaluate_relit_render(
     if not mask.any():
         mask = (target > 0.001).any(axis=-1)
 
+    prediction, target, mask = align_resolutions(prediction, target, mask)
+
     return RenderMetrics(
         rmse=rmse(prediction, target, mask),
         psnr=psnr(prediction, target, mask),
@@ -90,10 +97,12 @@ def evaluate_baked_texture(
     prediction = load_image(pred_path, rgb=True)
     target = load_image(gt_path, rgb=True)
     mask = (
-        load_mask(uv_mask_path, target.shape[:2])
+        load_mask(uv_mask_path)
         if uv_mask_path is not None and uv_mask_path.is_file()
         else None
     )
+
+    prediction, target, mask = align_resolutions(prediction, target, mask)
 
     return BakeMetrics(
         rmse=rmse(prediction, target, mask),

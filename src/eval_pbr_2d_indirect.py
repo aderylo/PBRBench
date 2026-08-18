@@ -18,7 +18,7 @@ PROJECT_ROOT = rootutils.setup_root(
 from src.data.pbr_estimation_dataset_2d import PBREstimationDataset2D
 from src.methods_2d import Prediction2D
 from src.utils import get_pylogger
-from src.utils.eval import load_alpha, load_image, write_yaml
+from src.utils.eval import align_resolutions, load_alpha, load_image, write_yaml
 from src.utils.metrics import (
     LPIPSMetric,
     mean_metrics,
@@ -50,6 +50,8 @@ def evaluate_relit_target(
     prediction = load_image(pred_path, rgb=True)
     target = load_image(gt_path, rgb=True)
     mask = load_alpha(gt_path)
+
+    prediction, target, mask = align_resolutions(prediction, target, mask)
 
     return RenderMetrics(
         rmse=rmse(prediction, target, mask),

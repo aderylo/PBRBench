@@ -20,7 +20,13 @@ PROJECT_ROOT = rootutils.setup_root(
 from src.data.pbr_estimation_dataset_3d import PBREstimationSample3D
 from src.methods_3d import Prediction3D
 from src.utils import get_pylogger
-from src.utils.eval import load_image, load_mask, srgb_to_linear, write_yaml
+from src.utils.eval import (
+    align_resolutions,
+    load_image,
+    load_mask,
+    srgb_to_linear,
+    write_yaml,
+)
 from src.utils.glb import extract_pbr_textures
 from src.utils.metrics import mae, mean_metrics, psnr, rmse
 
@@ -85,27 +91,6 @@ def load_prediction_textures(pred: Prediction3D) -> dict[str, np.ndarray]:
     )
 
 
-def _resize_if_needed(
-    image: np.ndarray, target_shape: tuple[int, int], *, is_mask: bool = False
-) -> np.ndarray:
-    """Resize image or mask to target_shape (H, W) if necessary."""
-    if image.shape[:2] == target_shape:
-        return image
-
-    if is_mask:
-        pil_img = Image.fromarray(image.astype(bool))
-        resized = pil_img.resize(
-            (target_shape[1], target_shape[0]), resample=Image.Resampling.NEAREST
-        )
-        return np.asarray(resized) > 0
-
-    pil_img = Image.fromarray((np.clip(image, 0.0, 1.0) * 255.0).astype(np.uint8))
-    resized = pil_img.resize(
-        (target_shape[1], target_shape[0]), resample=Image.Resampling.BILINEAR
-    )
-    return np.asarray(resized, dtype=np.float32) / 255.0
-
-
 def evaluate_sample(
     sample: PBREstimationSample3D, pred: Prediction3D
 ) -> SampleMetrics3D:
@@ -127,34 +112,38 @@ def evaluate_sample(
     gt_roughness = load_image(sample.roughness, rgb=False)
     gt_metallic = load_image(sample.metallic, rgb=False)
 
-    target_shape = gt_albedo.shape[:2]
-
     # Load ground truth UV mask if present, otherwise fallback to full mask
     if sample.uv_mask is not None and sample.uv_mask.is_file():
-        mask = _resize_if_needed(load_mask(sample.uv_mask), target_shape, is_mask=True)
+        mask = load_mask(sample.uv_mask)
     else:
-        mask = np.ones(target_shape, dtype=bool)
+        mask = np.ones(gt_albedo.shape[:2], dtype=bool)
 
     pred_textures = load_prediction_textures(pred)
-    pred_albedo = _resize_if_needed(pred_textures["albedo"], target_shape)
-    pred_roughness = _resize_if_needed(pred_textures["roughness"], target_shape)
-    pred_metallic = _resize_if_needed(pred_textures["metallic"], target_shape)
+    pred_albedo, gt_albedo, mask_albedo = align_resolutions(
+        pred_textures["albedo"], gt_albedo, mask
+    )
+    pred_roughness, gt_roughness, mask_roughness = align_resolutions(
+        pred_textures["roughness"], gt_roughness, mask
+    )
+    pred_metallic, gt_metallic, mask_metallic = align_resolutions(
+        pred_textures["metallic"], gt_metallic, mask
+    )
 
     return SampleMetrics3D(
         albedo=ImageMetrics(
-            rmse=rmse(pred_albedo, gt_albedo, mask),
-            psnr=psnr(pred_albedo, gt_albedo, mask),
-            mae=mae(pred_albedo, gt_albedo, mask),
+            rmse=rmse(pred_albedo, gt_albedo, mask_albedo),
+            psnr=psnr(pred_albedo, gt_albedo, mask_albedo),
+            mae=mae(pred_albedo, gt_albedo, mask_albedo),
         ),
         roughness=ImageMetrics(
-            rmse=rmse(pred_roughness, gt_roughness, mask),
-            psnr=psnr(pred_roughness, gt_roughness, mask),
-            mae=mae(pred_roughness, gt_roughness, mask),
+            rmse=rmse(pred_roughness, gt_roughness, mask_roughness),
+            psnr=psnr(pred_roughness, gt_roughness, mask_roughness),
+            mae=mae(pred_roughness, gt_roughness, mask_roughness),
         ),
         metallic=ImageMetrics(
-            rmse=rmse(pred_metallic, gt_metallic, mask),
-            psnr=psnr(pred_metallic, gt_metallic, mask),
-            mae=mae(pred_metallic, gt_metallic, mask),
+            rmse=rmse(pred_metallic, gt_metallic, mask_metallic),
+            psnr=psnr(pred_metallic, gt_metallic, mask_metallic),
+            mae=mae(pred_metallic, gt_metallic, mask_metallic),
         ),
     )
 

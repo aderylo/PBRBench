@@ -18,7 +18,7 @@ PROJECT_ROOT = rootutils.setup_root(
 from src.data.pbr_estimation_dataset_2d import PBREstimationSample2D
 from src.methods_2d import Prediction2D
 from src.utils import get_pylogger
-from src.utils.eval import load_image, load_mask, write_yaml
+from src.utils.eval import align_resolutions, load_image, load_mask, write_yaml
 from src.utils.metrics import mean_metrics, psnr, rmse
 
 log = get_pylogger(__name__)
@@ -50,27 +50,36 @@ def evaluate_sample(
     # 1. Albedo (linear RGB)
     gt_albedo = load_image(sample.albedo, rgb=True, to_linear=True)
     pred_albedo = load_image(pred.albedo, rgb=True, to_linear=True)
+    pred_albedo, gt_albedo, mask_albedo = align_resolutions(
+        pred_albedo, gt_albedo, mask
+    )
 
     # 2. Roughness (linear grayscale)
     gt_roughness = load_image(sample.roughness, rgb=False)
     pred_roughness = load_image(pred.roughness, rgb=False)
+    pred_roughness, gt_roughness, mask_roughness = align_resolutions(
+        pred_roughness, gt_roughness, mask
+    )
 
     # 3. Metallic (linear grayscale)
     gt_metallic = load_image(sample.metallic, rgb=False)
     pred_metallic = load_image(pred.metallic, rgb=False)
+    pred_metallic, gt_metallic, mask_metallic = align_resolutions(
+        pred_metallic, gt_metallic, mask
+    )
 
     return SampleMetrics2D(
         albedo=ImageMetrics(
-            rmse=rmse(pred_albedo, gt_albedo, mask),
-            psnr=psnr(pred_albedo, gt_albedo, mask),
+            rmse=rmse(pred_albedo, gt_albedo, mask_albedo),
+            psnr=psnr(pred_albedo, gt_albedo, mask_albedo),
         ),
         roughness=ImageMetrics(
-            rmse=rmse(pred_roughness, gt_roughness, mask),
-            psnr=psnr(pred_roughness, gt_roughness, mask),
+            rmse=rmse(pred_roughness, gt_roughness, mask_roughness),
+            psnr=psnr(pred_roughness, gt_roughness, mask_roughness),
         ),
         metallic=ImageMetrics(
-            rmse=rmse(pred_metallic, gt_metallic, mask),
-            psnr=psnr(pred_metallic, gt_metallic, mask),
+            rmse=rmse(pred_metallic, gt_metallic, mask_metallic),
+            psnr=psnr(pred_metallic, gt_metallic, mask_metallic),
         ),
     )
 
