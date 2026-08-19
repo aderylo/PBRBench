@@ -1,17 +1,16 @@
 defaults:
   - data: all_2d
-  - data/preprocessing/lighting: polyhaven_source_v0
+  - data/lighting: polyhaven_envmaps
   - data/preprocessing/rendering: blender_cycles_512
   - _self_
 
 predictions_dir: outputs/pbr_2d/supermat/predictions
 output_file: null
-save_rerenders: false
-target_envmaps: null
 lpips_backbone: alex
 device: cpu
 model_cache_dir: data/checkpoints/torch
 strict: false
+workers: 1
 
 hydra:
   run:

@@ -99,7 +99,6 @@ class PBREstimationSample2D:
     metallic: Path | None = None
     depth: Path | None = None
     view_metadata: ViewMetadata | None = None
-    asset_path: Path | None = None
     extra_metadata: Mapping[str, Any] = field(default_factory=dict, repr=False)
     source: str = ""
 
@@ -185,7 +184,6 @@ class PBREstimationDataset2D(Sequence[PBREstimationSample2D]):
                     metallic=self._optional_file(view_dir / "metallic.png"),
                     depth=self._optional_file(view_dir / "depth.png"),
                     view_metadata=ViewMetadata.from_dict(metadata),
-                    asset_path=Path(metadata["asset_path"]) if "asset_path" in metadata else None,
                     extra_metadata=metadata,
                     source=self.source,
                 )

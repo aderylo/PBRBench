@@ -131,37 +131,42 @@ def assign_material(meshes: list, paths: dict[str, str]) -> None:
         mesh.data.materials.append(material)
 
 
-def render_targets(targets: list[LightSpec], outputs: dict[str, str]) -> None:
-    for target in targets:
-        output = outputs.get(target.id)
-        if output is None:
-            continue
-        output_path = Path(output)
-        if output_path.exists() and output_path.stat().st_size > 0:
-            continue
-        setup_environment(target)
-        render_png(output_path, transform="Standard")
-
-
 def main() -> None:
     job = json.loads(arguments().job.read_text())
     renderer = RendererSpec.from_dict(job["renderer"])
-    targets = [LightSpec.from_dict(item) for item in job["targets"]]
-    for object_job in job["objects"]:
-        clear_scene()
-        imported, meshes = import_asset(Path(object_job["asset_path"]))
-        apply_normalization(imported, object_job["normalization"])
-        camera = add_camera(object_job["views"][0]["camera"])
-        add_projection(meshes, camera)
-        configure_render(renderer)
-        for view in object_job["views"]:
-            set_camera(camera, view["camera"])
-            assign_material(meshes, view["ground_truth"])
-            render_targets(targets, view["ground_truth_outputs"])
-            for prediction in view["predictions"]:
-                assign_material(meshes, prediction["channels"])
-                render_targets(targets, prediction["outputs"])
-                print(f"PROGRESS {prediction['sample_id']}", flush=True)
+
+    current_asset: str | None = None
+    current_norm: list | None = None
+    meshes: list = []
+    camera = None
+
+    configure_render(renderer)
+
+    for task in job.get("tasks", []):
+        output_path = Path(task["output_path"])
+        if output_path.exists() and output_path.stat().st_size > 0:
+            print(f"PROGRESS {task['id']}", flush=True)
+            continue
+
+        asset_path = str(task["asset_path"])
+        normalization = task["normalization"]
+
+        # Only reload asset if different from current
+        if asset_path != current_asset or normalization != current_norm:
+            clear_scene()
+            imported, meshes = import_asset(Path(asset_path))
+            apply_normalization(imported, normalization)
+            camera = add_camera(task["camera"])
+            add_projection(meshes, camera)
+            current_asset = asset_path
+            current_norm = normalization
+        else:
+            set_camera(camera, task["camera"])
+
+        assign_material(meshes, task["channels"])
+        setup_environment(LightSpec.from_dict(task["envmap"]))
+        render_png(output_path, transform="Standard")
+        print(f"PROGRESS {task['id']}", flush=True)
 
 
 if __name__ == "__main__":

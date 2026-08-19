@@ -1,0 +1,219 @@
+"""Blender relighting execution and job orchestration for 2D screen-space PBR textures."""
+
+from __future__ import annotations
+
+from dataclasses import asdict, dataclass, is_dataclass
+import json
+from pathlib import Path
+import subprocess
+import threading
+from collections.abc import Sequence
+from typing import Any
+
+from omegaconf import DictConfig, OmegaConf
+from tqdm.auto import tqdm
+
+from src.utils import get_pylogger
+
+log = get_pylogger(__name__)
+
+
+@dataclass(frozen=True)
+class RenderItem2D:
+    """A single 2D projective relighting render task."""
+
+    item_id: str
+    asset_path: Path
+    normalization: list[list[float]]
+    camera: dict[str, Any]
+    albedo: Path
+    roughness: Path
+    metallic: Path
+    envmap: Any
+    output_path: Path
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert RenderItem2D to a JSON-serializable dictionary for Blender worker."""
+        camera = (
+            asdict(self.camera) if is_dataclass(self.camera) else dict(self.camera)
+        )
+        envmap_dict = (
+            self.envmap.to_dict()
+            if hasattr(self.envmap, "to_dict")
+            else dict(self.envmap)
+        )
+        return {
+            "id": self.item_id,
+            "asset_path": str(self.asset_path.resolve()),
+            "normalization": self.normalization,
+            "camera": camera,
+            "channels": {
+                "albedo": str(self.albedo.resolve()),
+                "roughness": str(self.roughness.resolve()),
+                "metallic": str(self.metallic.resolve()),
+            },
+            "envmap": envmap_dict,
+            "output_path": str(self.output_path.resolve()),
+        }
+
+
+def rerender_2d(
+    config: DictConfig,
+    items: Sequence[RenderItem2D],
+    working_dir: Path,
+    blender_log_path: Path,
+) -> None:
+    """Run Blender projective relighting subprocess(es) with live progress tracking."""
+    if not items:
+        log.warning("No render items to relight.")
+        return
+
+    log.info(f"Relighting {len(items)} render tasks in Blender")
+    working_dir.mkdir(parents=True, exist_ok=True)
+    serialized_tasks = [item.to_dict() for item in items]
+    renderer_spec = OmegaConf.to_container(config.rendering, resolve=True)
+
+    num_workers = int(config.get("workers") or config.get("num_workers") or 1)
+    num_workers = max(1, min(num_workers, len(items)))
+
+    helper = Path(__file__).parent / "rerender_2d_blender_worker.py"
+    executable = str(config.rendering.executable)
+
+    if num_workers == 1:
+        job_spec = {
+            "renderer": renderer_spec,
+            "tasks": serialized_tasks,
+        }
+        job_path = working_dir / "job.json"
+        job_path.write_text(json.dumps(job_spec, indent=2))
+        log.info(f"Blender log saved to {blender_log_path}")
+
+        cmd = [
+            executable,
+            "--background",
+            "--python",
+            str(helper),
+            "--",
+            "--job",
+            str(job_path),
+        ]
+        with open(blender_log_path, "w") as log_file:
+            process = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                bufsize=1,
+            )
+            with tqdm(
+                total=len(items),
+                desc="Indirect PBR relighting (Blender)",
+                unit="sample",
+            ) as pbar:
+                if process.stdout:
+                    for line in process.stdout:
+                        log_file.write(line)
+                        if line.startswith("PROGRESS "):
+                            pbar.update(1)
+            return_code = process.wait()
+            if return_code != 0:
+                raise subprocess.CalledProcessError(return_code, cmd)
+        return
+
+    # Multi-worker parallel execution
+    log.info(f"Launching {num_workers} parallel Blender workers for relighting")
+    processes: list[subprocess.Popen] = []
+    threads: list[threading.Thread] = []
+    lock = threading.Lock()
+    errors: list[Exception] = []
+
+    with tqdm(
+        total=len(items),
+        desc=f"Indirect PBR relighting ({num_workers} Blender workers)",
+        unit="sample",
+    ) as pbar:
+
+        def stream_worker(
+            proc: subprocess.Popen,
+            log_path: Path,
+            worker_id: int,
+        ) -> None:
+            try:
+                with open(log_path, "w") as log_file:
+                    if proc.stdout:
+                        for line in proc.stdout:
+                            log_file.write(line)
+                            if line.startswith("PROGRESS "):
+                                with lock:
+                                    pbar.update(1)
+                rc = proc.wait()
+                if rc != 0:
+                    with lock:
+                        errors.append(
+                            RuntimeError(
+                                f"Worker {worker_id} failed with exit code {rc}. See {log_path}"
+                            )
+                        )
+            except Exception as e:
+                with lock:
+                    errors.append(e)
+
+        for worker_id in range(num_workers):
+            worker_tasks = serialized_tasks[worker_id::num_workers]
+            worker_job_spec = {
+                "renderer": renderer_spec,
+                "tasks": worker_tasks,
+            }
+            job_path = working_dir / f"job_worker_{worker_id}.json"
+            job_path.write_text(json.dumps(worker_job_spec, indent=2))
+            worker_log_path = working_dir / f"blender_worker_{worker_id}.log"
+
+            cmd = [
+                executable,
+                "--background",
+                "--python",
+                str(helper),
+                "--",
+                "--job",
+                str(job_path),
+            ]
+            proc = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                bufsize=1,
+            )
+            processes.append(proc)
+            t = threading.Thread(
+                target=stream_worker,
+                args=(proc, worker_log_path, worker_id),
+                daemon=True,
+            )
+            threads.append(t)
+            t.start()
+
+        for t in threads:
+            t.join()
+
+    # Always write combined worker logs
+    with open(blender_log_path, "w") as main_log:
+        for worker_id in range(num_workers):
+            worker_log_path = working_dir / f"blender_worker_{worker_id}.log"
+            main_log.write(f"=== Worker {worker_id} Log ===\n")
+            if worker_log_path.exists():
+                main_log.write(worker_log_path.read_text())
+                main_log.write("\n")
+
+    if errors:
+        for err in errors:
+            log.error(f"Blender worker error: {err}")
+        for worker_id in range(num_workers):
+            worker_log_path = working_dir / f"blender_worker_{worker_id}.log"
+            if worker_log_path.exists():
+                lines = worker_log_path.read_text().splitlines()
+                if lines:
+                    log.error(f"--- Last 20 lines of Worker {worker_id} log ---")
+                    for line in lines[-20:]:
+                        log.error(f"  [Worker {worker_id}] {line}")
+        raise errors[0]

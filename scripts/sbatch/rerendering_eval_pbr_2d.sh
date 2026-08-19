@@ -37,7 +37,7 @@ if ! command -v blender >/dev/null 2>&1; then
     exit 2
 fi
 
-exec uv run python -u src/eval_pbr_2d_indirect.py \
+exec uv run python -u src/rerendering_eval_pbr_2d.py \
     predictions_dir="${PREDICTIONS_DIR}" \
     save_rerenders=true \
     "$@"
