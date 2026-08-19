@@ -1,16 +1,28 @@
 defaults:
   - data: all_2d
   - data/lighting: polyhaven_envmaps
-  - data/preprocessing/rendering: blender_cycles_512
   - _self_
 
 predictions_dir: outputs/pbr_2d/supermat/predictions
 output_file: null
-lpips_backbone: alex
-device: cpu
-model_cache_dir: data/checkpoints/torch
 strict: false
 workers: 1
+
+rerenderer:
+  _target_: src.utils.rerender_2d_orchestrator.Rerenderer2D
+  executable: blender
+  resolution: 512
+  samples_per_pixel: 32
+  denoise: true
+  device: cuda
+  transparent_background: true
+  workers: ${workers}
+
+evaluator:
+  _target_: src.rerendering_eval_pbr_2d.RerenderingEvaluator
+  device: cpu
+  backbone: alex
+  model_cache_dir: data/checkpoints/torch
 
 hydra:
   run:

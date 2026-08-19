@@ -37,7 +37,7 @@ from src.utils.metrics import (
     ssim,
 )
 from src.utils.rerender_2d_orchestrator import (
-    rerender_2d,
+    Rerenderer2D,
 )
 
 log = get_pylogger(__name__)
@@ -116,18 +116,16 @@ def evaluate(config: DictConfig) -> dict:
         for envmap in envmaps
     ]
 
-    rerender_2d(
-        config=config,
+    log.info(f"Instantiating rerenderer <{config.rerenderer._target_}>")
+    rerenderer: Rerenderer2D = instantiate(config.rerenderer)
+    rerenderer.render(
         items=gt_render_items + pred_render_items,
         working_dir=rerenders_dir,
         blender_log_path=blender_log_path,
     )
 
-    evaluator = RerenderingEvaluator(
-        device=config.device,
-        backbone=config.lpips_backbone,
-        model_cache_dir=config.model_cache_dir,
-    )
+    log.info(f"Instantiating evaluator <{config.evaluator._target_}>")
+    evaluator: RerenderingEvaluator = instantiate(config.evaluator)
 
     results: dict[str, dict] = {}
     failures: dict[str, str] = {}
