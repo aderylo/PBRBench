@@ -1,16 +1,18 @@
 defaults:
-  - data: all_2d
+  - data: all_3d
   - data/lighting: polyhaven_envmaps
   - _self_
 
-predictions_dir: outputs/pbr_2d/supermat/predictions
+predictions_dir: outputs/pbr_3d/trellis2/predictions
 output_file: null
+eval_rerendering: true
+eval_baking: true
 strict: false
 device: cuda
 workers: 4
 
 rerenderer:
-  _target_: src.utils.rerender_2d_orchestrator.Rerenderer2D
+  _target_: src.utils.rerender_3d_orchestrator.Rerenderer3D
   executable: blender
   resolution: 512
   samples_per_pixel: 32
@@ -19,11 +21,14 @@ rerenderer:
   transparent_background: true
   workers: ${workers}
 
-evaluator:
+image_evaluator:
   _target_: src.utils.eval.RerenderingImageEvaluator
   device: ${device}
   backbone: alex
   model_cache_dir: data/checkpoints/torch
+
+uv_evaluator:
+  _target_: src.utils.eval.RerenderingUVEvaluator
 
 hydra:
   run:

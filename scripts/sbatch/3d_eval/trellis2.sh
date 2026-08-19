@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#SBATCH --job-name=trellis2_3d_full
+#SBATCH --job-name=trls2_3d_full
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --gpus=rtx_4090:1
@@ -63,9 +63,8 @@ echo " Stage 3: Indirect Evaluation (Blender Re-rendering)"
 echo "========================================================"
 module load blender/3.4.1 2>/dev/null || true
 
-uv run python -u src/eval_pbr_3d_indirect.py \
-    predictions_dir="${PREDICTIONS_DIR}" \
-    save_rerenders=true
+uv run python -u src/rerendering_eval_pbr_3d.py \
+    predictions_dir="${PREDICTIONS_DIR}"
 
 echo "========================================================"
 echo " All stages completed successfully."

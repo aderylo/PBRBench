@@ -29,8 +29,26 @@ def arguments() -> argparse.Namespace:
 
 
 def clear_scene() -> None:
-    bpy.ops.object.select_all(action="SELECT")
-    bpy.ops.object.delete(use_global=False)
+    for obj in list(bpy.data.objects):
+        bpy.data.objects.remove(obj, do_unlink=True)
+    for mesh in list(bpy.data.meshes):
+        bpy.data.meshes.remove(mesh, do_unlink=True)
+    for mat in list(bpy.data.materials):
+        bpy.data.materials.remove(mat, do_unlink=True)
+    for img in list(bpy.data.images):
+        bpy.data.images.remove(img, do_unlink=True)
+    for cam in list(bpy.data.cameras):
+        bpy.data.cameras.remove(cam, do_unlink=True)
+    for light in list(bpy.data.lights):
+        bpy.data.lights.remove(light, do_unlink=True)
+    for tex in list(bpy.data.textures):
+        bpy.data.textures.remove(tex, do_unlink=True)
+    for world in list(bpy.data.worlds):
+        bpy.data.worlds.remove(world, do_unlink=True)
+    try:
+        bpy.data.orphans_purge(do_local_ids=True, do_linked_ids=True, do_recursive=True)
+    except Exception:
+        pass
 
 
 def import_asset(path: Path) -> tuple[list[bpy.types.Object], list[bpy.types.Object]]:
@@ -154,6 +172,22 @@ def add_camera(camera_data: dict | None = None) -> bpy.types.Object:
     return camera
 
 
+def set_camera(camera: bpy.types.Object, camera_data: dict | None = None) -> None:
+    if camera_data and "camera_to_world" in camera_data and "intrinsics" in camera_data:
+        width = int(camera_data["resolution"][0]) if "resolution" in camera_data else 1024
+        camera.data.lens = float(camera_data["intrinsics"][0][0]) * 36.0 / width
+        camera.matrix_world = Matrix(camera_data["camera_to_world"])
+    else:
+        camera.data.lens = 50.0
+        location = Vector((0.0, -2.2, 0.5))
+        target = Vector((0.0, 0.0, 0.0))
+        direction = target - location
+        rot_quat = direction.to_track_quat("-Z", "Y")
+        camera.location = location
+        camera.rotation_euler = rot_quat.to_euler()
+    bpy.context.view_layer.update()
+
+
 def setup_environment(light: LightSpec) -> None:
     world = bpy.context.scene.world or bpy.data.worlds.new("BenchmarkWorld")
     bpy.context.scene.world = world
@@ -207,61 +241,48 @@ def bake_combined_texture(mesh: bpy.types.Object, output_path: Path, resolution:
 def main() -> None:
     job = json.loads(arguments().job.read_text())
     renderer = RendererSpec.from_dict(job["renderer"])
-    targets = [LightSpec.from_dict(item) for item in job["targets"]]
-    mode = job.get("mode", "render")
 
-    for sample_job in job["samples"]:
-        sample_id = sample_job["sample_id"]
-        gt_asset = Path(sample_job["gt_asset_path"])
-        pred_asset = Path(sample_job["pred_mesh_path"])
-        camera_data = sample_job.get("camera")
-        normalization = sample_job.get("normalization")
-        outputs = sample_job["outputs"]
-        gt_outputs = sample_job["gt_outputs"]
+    current_mesh_path: str | None = None
+    current_norm: list | None = None
+    meshes: list[bpy.types.Object] = []
+    camera: bpy.types.Object | None = None
 
-        # Render ground truth mesh under target envmaps
-        if gt_asset.is_file():
+    configure_render(renderer)
+
+    for task in job.get("tasks", []):
+        output_path = Path(task["output_path"])
+        if output_path.exists() and output_path.stat().st_size > 0:
+            print(f"PROGRESS {task['id']}", flush=True)
+            continue
+
+        mesh_path = str(task["mesh_path"])
+        normalization = task.get("normalization")
+        camera_data = task.get("camera")
+        mode = task.get("mode", "render")
+        envmap = LightSpec.from_dict(task["envmap"])
+
+        # Reload asset only if changed
+        if mesh_path != current_mesh_path or normalization != current_norm:
             clear_scene()
-            imported, meshes = import_asset(gt_asset)
+            imported, meshes = import_asset(Path(mesh_path))
             if normalization:
                 apply_normalization(imported, normalization)
             else:
                 normalize_asset(imported, meshes)
-            add_camera(camera_data)
-            configure_render(renderer)
-            for target in targets:
-                gt_output = gt_outputs.get(target.id)
-                if gt_output:
-                    gt_out_path = Path(gt_output)
-                    if not (gt_out_path.exists() and gt_out_path.stat().st_size > 0):
-                        setup_environment(target)
-                        if mode == "bake" and meshes:
-                            bake_combined_texture(meshes[0], gt_out_path, renderer.resolution)
-                        else:
-                            render_png(gt_out_path)
+            camera = add_camera(camera_data)
+            current_mesh_path = mesh_path
+            current_norm = normalization
+        elif camera is not None:
+            set_camera(camera, camera_data)
 
-        # Render predicted GLB mesh under target envmaps
-        if pred_asset.is_file():
-            clear_scene()
-            imported, meshes = import_asset(pred_asset)
-            if normalization:
-                apply_normalization(imported, normalization)
-            else:
-                normalize_asset(imported, meshes)
-            add_camera(camera_data)
-            configure_render(renderer)
-            for target in targets:
-                pred_output = outputs.get(target.id)
-                if pred_output:
-                    pred_out_path = Path(pred_output)
-                    if not (pred_out_path.exists() and pred_out_path.stat().st_size > 0):
-                        setup_environment(target)
-                        if mode == "bake" and meshes:
-                            bake_combined_texture(meshes[0], pred_out_path, renderer.resolution)
-                        else:
-                            render_png(pred_out_path)
+        setup_environment(envmap)
 
-        print(f"PROGRESS {sample_id}", flush=True)
+        if mode == "bake" and meshes:
+            bake_combined_texture(meshes[0], output_path, renderer.resolution)
+        else:
+            render_png(output_path)
+
+        print(f"PROGRESS {task['id']}", flush=True)
 
 
 if __name__ == "__main__":

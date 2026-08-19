@@ -21,20 +21,14 @@ from src.data.pbr_estimation_dataset_2d import (
 )
 from src.utils import get_pylogger
 from src.utils.eval import (
-    align_resolutions,
+    RerenderingImageEvaluator,
     gt_sample2d_to_render_item,
-    load_alpha,
-    load_image,
     pred2d_to_render_item,
     scan_pbr_predictions_dir_2d,
     write_yaml,
 )
 from src.utils.metrics import (
-    LPIPSMetric,
     mean_metrics,
-    psnr,
-    rmse,
-    ssim,
 )
 from src.utils.rerender_2d_orchestrator import (
     Rerenderer2D,
@@ -43,40 +37,7 @@ from src.utils.rerender_2d_orchestrator import (
 log = get_pylogger(__name__)
 
 
-@dataclass(frozen=True)
-class RenderMetrics:
-    """Image-space comparison metrics between prediction and reference renders."""
 
-    rmse: float
-    psnr: float
-    ssim: float
-    lpips: float
-
-
-class RerenderingEvaluator:
-    """Evaluates image-space appearance metrics between prediction and reference renders."""
-
-    def __init__(self, device: str, backbone: str, model_cache_dir: Path | str) -> None:
-        self.lpips = LPIPSMetric(
-            str(device), str(backbone), Path(model_cache_dir).resolve()
-        )
-
-    def evaluate(self, pred_path: Path, gt_path: Path) -> dict[str, float]:
-        """Evaluate image metrics on one relit viewpoint/target pair."""
-        prediction = load_image(pred_path, rgb=True)
-        target = load_image(gt_path, rgb=True)
-        mask = load_alpha(gt_path)
-
-        prediction, target, mask = align_resolutions(prediction, target, mask)
-
-        return asdict(
-            RenderMetrics(
-                rmse=rmse(prediction, target, mask),
-                psnr=psnr(prediction, target, mask),
-                ssim=ssim(prediction, target, mask),
-                lpips=self.lpips(prediction, target, mask),
-            )
-        )
 
 
 def evaluate(config: DictConfig) -> dict:
@@ -125,7 +86,7 @@ def evaluate(config: DictConfig) -> dict:
     )
 
     log.info(f"Instantiating evaluator <{config.evaluator._target_}>")
-    evaluator: RerenderingEvaluator = instantiate(config.evaluator)
+    evaluator: RerenderingImageEvaluator = instantiate(config.evaluator)
 
     results: dict[str, dict] = {}
     failures: dict[str, str] = {}

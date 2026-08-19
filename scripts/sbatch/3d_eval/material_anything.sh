@@ -53,9 +53,8 @@ echo " Stage 3: Indirect Evaluation (Blender Re-rendering)"
 echo "========================================================"
 module load blender/3.4.1 2>/dev/null || true
 
-uv run python -u src/eval_pbr_3d_indirect.py \
-    predictions_dir="${PREDICTIONS_DIR}" \
-    save_rerenders=true
+uv run python -u src/rerendering_eval_pbr_3d.py \
+    predictions_dir="${PREDICTIONS_DIR}"
 
 echo "========================================================"
 echo " All stages completed successfully."

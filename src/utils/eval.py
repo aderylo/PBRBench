@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import math
-from dataclasses import asdict, is_dataclass
+from dataclasses import asdict, dataclass, is_dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import numpy as np
 import yaml
@@ -16,9 +16,18 @@ from src.data.pbr_estimation_dataset_2d import (
     PBREstimationSample2D,
     ViewMetadata,
 )
+from src.data.pbr_estimation_dataset_3d import PBREstimationSample3D
 from src.methods_2d import Prediction2D
 from src.methods_3d import Prediction3D
+from src.utils.metrics import (
+    LPIPSMetric,
+    mae,
+    psnr,
+    rmse,
+    ssim,
+)
 from src.utils.rerender_2d_orchestrator import RenderItem2D
+from src.utils.rerender_3d_orchestrator import RenderItem3D
 
 CHANNELS = ("albedo", "roughness", "metallic")
 
@@ -99,6 +108,86 @@ def scan_pbr_predictions_dir_3d(
         for d in sorted(path.iterdir())
         if d.is_dir()
     }
+
+
+def gt_sample3d_to_render_item(
+    sample: PBREstimationSample3D,
+    envmap: EnvMapSpec,
+    rerenders_dir: Path,
+    *,
+    mode: Literal["render", "bake"] = "render",
+) -> RenderItem3D:
+    """Construct RenderItem3D for one 3D ground-truth relighting render or bake task."""
+    gt_asset = sample.mesh_path
+    if not gt_asset.is_file() and sample.asset_path is not None:
+        gt_asset = sample.asset_path
+
+    view_tag = (
+        sample.reference_view.parent.parent.name
+        if sample.reference_view is not None
+        else "default"
+    )
+    if mode == "render":
+        output_path = rerenders_dir / "render" / "gt" / sample.object_id / view_tag / f"{envmap.id}.png"
+        camera = (
+            sample.view_metadata.camera
+            if sample.view_metadata is not None
+            else None
+        )
+    else:
+        output_path = rerenders_dir / "bake" / "gt" / sample.object_id / f"{envmap.id}.png"
+        camera = None
+
+    normalization = (
+        sample.view_metadata.normalization_source_to_world
+        if sample.view_metadata is not None
+        else None
+    )
+
+    return RenderItem3D(
+        item_id=f"gt__{sample.sample_id}__{envmap.id}__{mode}",
+        mesh_path=gt_asset,
+        normalization=normalization,
+        camera=camera,
+        envmap=envmap,
+        output_path=output_path,
+        mode=mode,
+    )
+
+
+def pred3d_to_render_item(
+    pred: Prediction3D,
+    sample: PBREstimationSample3D,
+    envmap: EnvMapSpec,
+    rerenders_dir: Path,
+    *,
+    mode: Literal["render", "bake"] = "render",
+) -> RenderItem3D:
+    """Construct RenderItem3D for one 3D prediction relighting render or bake task."""
+    if pred.pbr_asset_glb is None:
+        raise ValueError(f"Prediction for {pred.sample_id} does not have a pbr_asset_glb")
+
+    camera = (
+        sample.view_metadata.camera
+        if (mode == "render" and sample.view_metadata is not None)
+        else None
+    )
+    normalization = (
+        sample.view_metadata.normalization_source_to_world
+        if sample.view_metadata is not None
+        else None
+    )
+    output_path = rerenders_dir / mode / "pred" / sample.sample_id / f"{envmap.id}.png"
+
+    return RenderItem3D(
+        item_id=f"pred__{sample.sample_id}__{envmap.id}__{mode}",
+        mesh_path=Path(pred.pbr_asset_glb),
+        normalization=normalization,
+        camera=camera,
+        envmap=envmap,
+        output_path=output_path,
+        mode=mode,
+    )
 
 
 # -----------------------------------------------------------------------------
@@ -232,3 +321,90 @@ def write_yaml(path: Path | str, payload: Any) -> None:
         asdict(payload) if is_dataclass(payload) else payload
     )
     p.write_text(yaml.safe_dump(serializable_payload, sort_keys=False))
+
+
+# -----------------------------------------------------------------------------
+# Rerendering Evaluators
+# -----------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class RenderMetrics:
+    """Image-space comparison metrics between prediction and reference renders."""
+
+    rmse: float
+    psnr: float
+    ssim: float
+    lpips: float
+
+
+@dataclass(frozen=True)
+class BakeMetrics:
+    """Texture-space comparison metrics between baked prediction and reference UV maps."""
+
+    rmse: float
+    psnr: float
+    mae: float
+    ssim: float
+
+
+class RerenderingImageEvaluator:
+    """Evaluates image-space appearance metrics between prediction and reference renders."""
+
+    def __init__(
+        self,
+        device: str = "cpu",
+        backbone: str = "alex",
+        model_cache_dir: Path | str = "data/checkpoints/torch",
+    ) -> None:
+        self.lpips = LPIPSMetric(
+            str(device), str(backbone), Path(model_cache_dir).resolve()
+        )
+
+    def evaluate(self, pred_path: Path, gt_path: Path) -> dict[str, float]:
+        """Evaluate image metrics on one relit viewpoint/target pair."""
+        prediction = load_image(pred_path, rgb=True)
+        target = load_image(gt_path, rgb=True)
+        mask = load_alpha(gt_path)
+
+        prediction, target, mask = align_resolutions(prediction, target, mask)
+
+        return asdict(
+            RenderMetrics(
+                rmse=rmse(prediction, target, mask),
+                psnr=psnr(prediction, target, mask),
+                ssim=ssim(prediction, target, mask),
+                lpips=self.lpips(prediction, target, mask),
+            )
+        )
+
+
+class RerenderingUVEvaluator:
+    """Evaluates texture-space metrics between baked prediction and reference UV maps."""
+
+    def evaluate(
+        self,
+        pred_path: Path,
+        gt_path: Path,
+        uv_mask_path: Path | None = None,
+    ) -> dict[str, float]:
+        """Evaluate texture-space metrics on one baked UV texture pair."""
+        prediction = load_image(pred_path, rgb=True)
+        target = load_image(gt_path, rgb=True)
+        mask = (
+            load_mask(uv_mask_path)
+            if uv_mask_path is not None and uv_mask_path.is_file()
+            else None
+        )
+
+        prediction, target, mask = align_resolutions(prediction, target, mask)
+
+        return asdict(
+            BakeMetrics(
+                rmse=rmse(prediction, target, mask),
+                psnr=psnr(prediction, target, mask),
+                mae=mae(prediction, target, mask),
+                ssim=ssim(prediction, target, mask),
+            )
+        )
+

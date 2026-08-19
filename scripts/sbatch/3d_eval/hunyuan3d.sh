@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#SBATCH --job-name=hunyuan3d_full
+#SBATCH --job-name=hy_3d_full
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --gpus=rtx_4090:1
@@ -19,8 +19,8 @@ export TRANSFORMERS_OFFLINE=1
 export HF_HUB_OFFLINE=1
 
 
-# Load CUDA 12.4 stack (matches the PyTorch build: 2.6.0+cu124)
-module load stack/2024-06 gcc/12.2.0 cuda/12.4.1 2>/dev/null || true
+# Load CUDA and Blender stack for Embree shared libraries
+module load stack/2024-06 gcc/12.2.0 cuda/12.4.1 blender/3.4.1 2>/dev/null || true
 
 readonly PYTHON="${PROJECT_ROOT}/third_party/.venvs/hunyuan3d/bin/python"
 readonly PREDICTIONS_DIR="${PROJECT_ROOT}/outputs/pbr_3d/hunyuan3d/predictions"
@@ -51,8 +51,6 @@ uv run python -u src/eval_pbr_3d_direct.py \
 echo "========================================================"
 echo " Stage 3: Indirect Evaluation (Blender Re-rendering)"
 echo "========================================================"
-module load blender/3.4.1 2>/dev/null || true
-
 uv run python -u src/eval_pbr_3d_indirect.py \
     predictions_dir="${PREDICTIONS_DIR}" \
     save_rerenders=true
